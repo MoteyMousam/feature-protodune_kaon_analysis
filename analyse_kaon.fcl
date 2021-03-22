@@ -1,0 +1,20 @@
+#include "filters.fcl"
+#include "triggeralgo_service.fcl"
+#include "ProtoDUNEBeamCuts.fcl"
+#include "ProtoDUNECalibration.fcl"
+#include "ProtoDUNEBeamlineUtils.fcl"
+
+BEGIN_PROLOG
+
+analyzeEvents:
+{
+    module_type:                "PDSPKaonAnalysis"
+    PFParticleLabel:            "pandora"
+    TruthLabel:                 "largeant"
+    TrackLabel:                 "pandoraTrack"
+    GeneratorTag:               "generator"
+    HitTag:                     "hitpdune"
+    BeamModuleLabel:            "beamevent"
+}
+
+END_PROLOG

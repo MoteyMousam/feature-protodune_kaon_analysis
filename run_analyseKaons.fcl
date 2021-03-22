@@ -1,0 +1,60 @@
+#include "analyse_kaon.fcl"
+#include "services_refactored_pdune.fcl"
+#include "caldata_dune.fcl"
+#include "wirecell_dune.fcl"
+#include "hitfindermodules_dune.fcl"
+#include "SpacePointSolver_dune.fcl"
+#include "cluster_dune.fcl"
+#include "trackfindermodules_dune.fcl"
+#include "pandoramodules_dune.fcl"
+#include "calorimetry_pdune.fcl"
+#include "calibration_dune.fcl"
+#include "featurelabelingmodules.fcl"
+#include "particleid.fcl"
+#include "mctrutht0matching.fcl"
+#include "t0reco.fcl"
+#include "opticaldetectormodules_dune.fcl"
+#include "showerfindermodules_dune.fcl"
+#include "emshower3d.fcl"
+#include "ProtoDUNETriggerFilter.fcl"
+#include "OpSlicer.fcl"
+#include "CRT.fcl"
+#include "T0RecoAnodePiercers.fcl"
+#include "numberofhitsfilter.fcl"
+#include "protodune_tools_dune.fcl"
+
+process_Name: PDSPKaonAnalysis
+
+source:
+{
+    module_type: RootInput
+    maxEvents: -1
+}
+
+services:
+{
+    TFileService: { fileName: "kaonAnalysisOutput.root"}
+    @table::protodune_reco_services
+
+    BackTrackerService: 
+    {
+        BackTracker: 
+        {
+            SimChannelModuleLabel: "tpcrawdecoder:simpleSC"
+            G4ModuleLabel: "largeant"
+            MinimumHitEnergyFraction: 1e-1
+        }
+    }
+}
+
+services.SpaceCharge.EnableSimSpatialSCE: true
+
+physics:
+{
+    analyzers:
+    {
+        ana: @local::analyzeEvents
+    }
+    path0:      [ana]
+    end_paths:  [path0]
+}
