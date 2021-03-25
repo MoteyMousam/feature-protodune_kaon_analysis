@@ -12,6 +12,7 @@ analyzeEvents:
     PFParticleLabel:            "pandora"
     TruthLabel:                 "largeant"
     TrackLabel:                 "pandoraTrack"
+    ShowerLabel:                "pandoraShower"
     GeneratorTag:               "generator"
     HitTag:                     "hitpdune"
     BeamModuleLabel:            "beamevent"
