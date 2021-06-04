@@ -16,7 +16,7 @@
     <algorithm type = "LArMCParticleMonitoring">
         <CaloHitListName>CaloHitList2D</CaloHitListName>
         <MCParticleListName>Input</MCParticleListName>
-	<MinHitsForDisplay>1</MinHitsForDisplay>
+	<MinHitsForDisplay>0</MinHitsForDisplay>
     </algorithm>
 
     <algorithm type = "LArVisualMonitoring">

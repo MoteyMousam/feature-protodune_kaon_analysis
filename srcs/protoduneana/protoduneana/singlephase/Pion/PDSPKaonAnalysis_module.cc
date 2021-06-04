@@ -45,7 +45,10 @@
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include "lardataobj/RecoBase/SpacePoint.h"
 #include "larevt/SpaceChargeServices/SpaceChargeService.h" //for SCE correction
-
+#include "larsim/MCCheater/ParticleInventoryService.h" //for pi_serv
+#include "lardataobj/RecoBase/PFParticleMetadata.h"
+#include <algorithm>
+#include <tgmath.h>
 
 namespace analysis {
   class PDSPKaonAnalysis;
@@ -74,8 +77,14 @@ public:
 private:
 
   // Declare member data here.
+//  bool sortcol( const std::vector<int>& v1, const std::vector<int>& v2 );   //<=============THIS ONE, DOM
+//void calculate_tier0_quatities
+//void calculate_tier1_quatities
+std::vector<const simb::MCParticle*> apply_true_particle_quality_cuts(std::vector<const simb::MCParticle*> inputVector);
+int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
+
   TTree *fTree;
-  unsigned int fEventID;
+
 //  unsigned int fNPFParticles;
 //  unsigned int fNPrimaries;
 //  int fNPrimaryDaughters;
@@ -87,29 +96,48 @@ private:
   std::string fBeamModuleLabel;
   std::string fHitTag;
 
+  unsigned int fEventID;
 
-//  float fTrueKaonEnergy;
-//  float fTruePrimaryEnergy;
-  float fTrueBeamParticleEnergy;
-
-  int fRecoBeamParticlePDGCode;
-  int fIsBeamParticleReconstructed;
   int fTrueBeamParticlePDGCode;
-  int fbestMatchedMCParticleFromPFParticlePdgCode;
-  float fpurity;
+
   float fcompleteness;
+  float fpurity;
 
-  float fTrueBeamParticleStartX;
-  float fTrueBeamParticleStartY;
-  float fTrueBeamParticleStartZ;
-
-//  float fTrueBeamParticleStartX_SCE_corrected;
-//  float fTrueBeamParticleStartY_SCE_corrected;
-//  float fTrueBeamParticleStartZ_SCE_corrected;
+  float fRecoBeamParticleStartX;
+  float fRecoBeamParticleStartY;
+  float fRecoBeamParticleStartZ;
 
   float fBeamInst_startVertex_X_SCE_corrected;
   float fBeamInst_startVertex_Y_SCE_corrected;
   float fBeamInst_startVertex_Z_SCE_corrected;
+
+  float fBeamInst_startVertex_dr_SCE_corrected; // need to code
+  
+  int fDoesTrueBeamParticleExist; // need to code
+  int fIsBeamParticleReconstructed;
+
+  float fPrimaryRecoPfpLength;
+  float fPrimaryBeamParticleLength;
+  float fBeam_length_by_traj_points;
+  float fTrueBeamLengthVersion3;
+
+  int fTrueBeamParticleNhits;
+  int fRecoBeamParticleNhits;
+
+  float fTrueBeamParticleEnergy;//
+  int fRecoBeamParticlePDGCode;//
+
+  int fbestMatchedMCParticleFromPFParticlePdgCode;//
+
+  float fTrueBeamParticleStartX; //
+  float fTrueBeamParticleStartY; //
+  float fTrueBeamParticleStartZ; //
+
+//  float fTrueBeamParticleStartX_SCE_corrected; // need to code
+//  float fTrueBeamParticleStartY_SCE_corrected; // need to code
+//  float fTrueBeamParticleStartZ_SCE_corrected; // need to code
+
+
 
 
   float fTrueBeamParticleEndX;
@@ -119,12 +147,6 @@ private:
   float fTrueBeamParticleStartPx;
   float fTrueBeamParticleStartPy;
   float fTrueBeamParticleStartPz;
-
-  int  fTrueBeamParticleNhits;
-
-  float fRecoBeamParticleStartX;
-  float fRecoBeamParticleStartY;
-  float fRecoBeamParticleStartZ;
 
   float fRecoBeamParticleStartPx;
   float fRecoBeamParticleStartPy;
@@ -146,8 +168,6 @@ private:
   float fTrueBeamParticleInteractionY;
   float fTrueBeamParticleInteractionZ;
 
-  int fRecoBeamParticleNhits;
-
   float beam_inst_X;
   float beam_inst_Y;
   float beam_inst_Z;
@@ -156,13 +176,104 @@ private:
   bool fMCHasBI;
   bool beam_inst_valid;
 
-  float fPrimaryRecoPfpLength;
-  float fPrimaryBeamParticleLength;
-  float fBeam_length_by_traj_points;
   int fReco_beam_pfp_topology;
+
+  int fTier0MCParticleHitsSize;
+  int fTier0recoBeamParticleHitsSize;
+  int fSharedTier0RecoTrueHitsSize;
+  int fTier0RecoMCParticleMatch;
+  float fStartVertexDr;
+  float fInteractionVertexDr;
 
   protoana::ProtoDUNETruthUtils fProtoDUNETruthUtils;
   protoana::ProtoDUNEPFParticleUtils fProtoDUNEPFParticleUtils;
+  art::ServiceHandle< cheat::ParticleInventoryService > pi_serv;
+
+//---------------------------Tier 1-----------------------------------------
+
+  float fTier1TrueBeamParticleEnergy;
+
+  int fTier1RecoBeamParticlePDGCode;
+  int fTier1IsBeamParticleReconstructed;
+  int fTier1TrueBeamParticlePDGCode;
+  int fTier1bestMatchedMCParticleFromPFParticlePdgCode;
+  float fTier1purity;
+  float fTier1completeness;
+
+  float fTier1TrueBeamParticleStartX;
+  float fTier1TrueBeamParticleStartY;
+  float fTier1TrueBeamParticleStartZ;
+
+//  float fTrueBeamParticleStartX_SCE_corrected;
+//  float fTrueBeamParticleStartY_SCE_corrected;
+//  float fTrueBeamParticleStartZ_SCE_corrected;
+
+  float fTier1BeamInst_startVertex_X_SCE_corrected;
+  float fTier1BeamInst_startVertex_Y_SCE_corrected;
+  float fTier1BeamInst_startVertex_Z_SCE_corrected;
+
+
+  float fTier1TrueBeamParticleEndX;
+  float fTier1TrueBeamParticleEndY;
+  float fTier1TrueBeamParticleEndZ;
+
+  float fTier1TrueBeamParticleStartPx;
+  float fTier1TrueBeamParticleStartPy;
+  float fTier1TrueBeamParticleStartPz;
+
+  int  fTier1TrueBeamParticleNhits;
+
+  float fTier1RecoBeamParticleStartX;
+  float fTier1RecoBeamParticleStartY;
+  float fTier1RecoBeamParticleStartZ;
+
+  float fTier1RecoBeamParticleStartPx;
+  float fTier1RecoBeamParticleStartPy;
+  float fTier1RecoBeamParticleStartPz;
+
+  float fTier1TrueBeamStartDirX;
+  float fTier1TrueBeamStartDirY;
+  float fTier1TrueBeamStartDirZ;
+
+  float fTier1RecoBeamStartDirX;
+  float fTier1RecoBeamStartDirY;
+  float fTier1RecoBeamStartDirZ;
+
+  float fTier1RecoBeamParticleInteractionX;
+  float fTier1RecoBeamParticleInteractionY;
+  float fTier1RecoBeamParticleInteractionZ;
+
+  float fTier1TrueBeamParticleInteractionX;
+  float fTier1TrueBeamParticleInteractionY;
+  float fTier1TrueBeamParticleInteractionZ;
+
+  int fTier1RecoBeamParticleNhits;
+
+  float tier1beam_inst_X;
+  float tier1beam_inst_Y;
+  float tier1beam_inst_Z;
+
+/*  int fNumberOfReconstructedBeamParticle;
+  bool fMCHasBI;
+  bool beam_inst_valid;*/
+
+  float fTier1PrimaryRecoPfpLength;
+  float fTier1PrimaryBeamParticleLength;
+  float fTier1Beam_length_by_traj_points;
+  int fTier1Reco_beam_pfp_topology;
+
+  int fTier1MCParticleHitsSize;
+  int fTier1recoBeamParticleHitsSize;
+  int fSharedTier1RecoTrueHitsSize;
+  int fTier1RecoMCParticleMatch;
+
+  int fTier1MCParticleNumber;
+  int fTier1RecoParticleNumber;
+  int fTier1MCRecoMatchedNumber;
+  float fTier1TrueBeamParticleLength;
+  float fTier1StartVertexDr;
+
+//-------------------------------------------------------------------
 //  protoana::ProtoDUNEBeamlineUtils fBeamlineUtils;
 };
 
@@ -192,10 +303,10 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
     fEventID = e.id().event();
 //    fTruePrimaryEnergy = -999.;
-    fTrueBeamParticleEnergy = -9999.;
-    fTrueBeamParticlePDGCode = 0;
-    fpurity = -1.f;
-    fcompleteness = -1.f;
+    fTrueBeamParticleEnergy                     = -9999.;
+    fTrueBeamParticlePDGCode                    = -9999;
+    fpurity                                     = -1.f;
+    fcompleteness                               = -1.f;
 
     fTrueBeamParticleStartX                     = -9999;
     fTrueBeamParticleStartY                     = -9999;
@@ -263,193 +374,135 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     fBeam_length_by_traj_points                 = -9999;
 
     fReco_beam_pfp_topology                     = -9999;
+
+    fTier0MCParticleHitsSize                    = -9999;
+    fTier0recoBeamParticleHitsSize              = -9999;
+    fSharedTier0RecoTrueHitsSize                = -9999;
+    fTier0RecoMCParticleMatch                   = 0;
+    fDoesTrueBeamParticleExist                  = -9999;
+    fStartVertexDr                              = -9999;
+    fInteractionVertexDr                        = -9999;
+//------------------------------Tier 1--------------------------------------
+    fTier1TrueBeamParticleEnergy                     = -9999.;
+    fTier1TrueBeamParticlePDGCode                    = -9999;
+    fTier1purity                                     = -1.f;
+    fTier1completeness                               = -1.f;
+
+    fTier1TrueBeamParticleStartX                     = -9999;
+    fTier1TrueBeamParticleStartY                     = -9999;
+    fTier1TrueBeamParticleStartZ                     = -9999;
+
+//    fTrueBeamParticleStartX_SCE_corrected       = -9999;
+//    fTrueBeamParticleStartY_SCE_corrected       = -9999;
+//    fTrueBeamParticleStartZ_SCE_corrected       = -9999;
+
+    fTier1BeamInst_startVertex_X_SCE_corrected       = -9999;
+    fTier1BeamInst_startVertex_Y_SCE_corrected       = -9999;
+    fTier1BeamInst_startVertex_Z_SCE_corrected       = -9999;
+
+    fTier1TrueBeamParticleEndX                       = -9999;
+    fTier1TrueBeamParticleEndY                       = -9999;
+    fTier1TrueBeamParticleEndZ                       = -9999;
+
+    tier1beam_inst_X                                 = -9999;
+    tier1beam_inst_Y                                 = -9999;
+    tier1beam_inst_Z                                 = -9999;
+//    beam_inst_valid                             =  true;
+
+    fTier1TrueBeamParticleStartPx                    = -9999;
+    fTier1TrueBeamParticleStartPy                    = -9999;
+    fTier1TrueBeamParticleStartPz                    = -9999;
+
+    fTier1TrueBeamParticleNhits                      = -9999;
+    fTier1RecoBeamParticleNhits                      = -9999;
+
+    fTier1RecoBeamParticleStartX                     = -9999;
+    fTier1RecoBeamParticleStartY                     = -9999;
+    fTier1RecoBeamParticleStartZ                     = -9999;
+
+    fTier1RecoBeamParticleStartPx                    = -9999;
+    fTier1RecoBeamParticleStartPy                    = -9999;
+    fTier1RecoBeamParticleStartPz                    = -9999;
+
+    fTier1TrueBeamStartDirX                          = -9999;
+    fTier1TrueBeamStartDirY                          = -9999;
+    fTier1TrueBeamStartDirZ                          = -9999;
+
+    fTier1RecoBeamStartDirX                          = -9999;
+    fTier1RecoBeamStartDirY                          = -9999;
+    fTier1RecoBeamStartDirZ                          = -9999;
+            
+    fTier1RecoBeamParticleInteractionX               = -9999;
+    fTier1RecoBeamParticleInteractionY               = -9999;
+    fTier1RecoBeamParticleInteractionZ               = -9999;
+
+    fTier1TrueBeamParticleInteractionX               = -9999;
+    fTier1TrueBeamParticleInteractionY               = -9999;
+    fTier1TrueBeamParticleInteractionZ               = -9999;
+
+//    fTier1NumberOfReconstructedBeamParticle          = 1;
+
+    fTier1PrimaryRecoPfpLength                       = -9999;
+    fTier1PrimaryBeamParticleLength                  = -9999;
+    fTier1Beam_length_by_traj_points                 = -9999;
+
+    fTier1Reco_beam_pfp_topology                     = -9999;
+
+    fTier1MCParticleHitsSize                    = -9999;
+    fTier1recoBeamParticleHitsSize              = -9999;
+    fSharedTier1RecoTrueHitsSize                = -9999;
+    fTier1RecoMCParticleMatch                   = 0;
+
+    fTier1MCParticleNumber                            = -9999;
+    fTier1RecoParticleNumber                          = -9999; 
+    fTier1MCRecoMatchedNumber                   = -9999;
+
+    fTier1TrueBeamParticleLength                = -9999;
+    fTier1StartVertexDr                         = -9999;
+
+
+//------------------------------------------------------------------
+
 //==================Accessing Truth Info Block=============================
 
 /*========To do list=======================================================
 
     rename beam_inst_vertex into start_vertex_XYZ
 =========================================================================*/
-/*    if (!e.isRealData())
-    {
-        art::ValidHandle<std::vector<simb::MCParticle>> mcParticles = e.getValidHandle<std::vector<simb::MCParticle>>(fTruthLabel);
 
-//        std::cout << "mcParticles: " << mcParticles->size() << std::endl;
+//For tier0, count associated hits with MCParticle
 
-        if(mcParticles.isValid())
-        {
-            for(unsigned int t = 0; t < mcParticles->size(); ++t)
-            {
-                const simb::MCParticle trueParticle = mcParticles->at(t);
-                if(trueParticle.Process() == "primary" && fProtoDUNEPFParticleUtils.IsBeamParticle(particle, e, fPFParticleLabel) == 1)
-                {
-                    fTruePrimaryEnergy = trueParticle.E();
-                }
-            }
-        }
-    }*/
-
-//=========================================================================
     auto const clockData = art::ServiceHandle<detinfo::DetectorClocksService>()->DataFor(e);
     const simb::MCParticle* true_beam_particle = 0x0;
 
-    std::vector<art::Ptr<beam::ProtoDUNEBeamEvent>> beamVec;
+    std::vector< const recob::Hit* > tier0MCParticleHits;
+
+    std::vector < const simb::MCParticle*> tier1TrueParticles;
+    std::vector <const recob::PFParticle* > tier1RecoParticles;
+    std::vector < const simb::MCParticle*> tier1TrueParticlesQ1;
+
+    const sim::ParticleList & plist = pi_serv->ParticleList();
 
     if(!e.isRealData())
     {
         auto mcTruths = e.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorTag);
         
         true_beam_particle = fProtoDUNETruthUtils.GetGeantGoodParticle((*mcTruths)[0],e);
-
-        fTrueBeamParticleEnergy = true_beam_particle->E();
-        fTrueBeamParticlePDGCode = true_beam_particle->PdgCode();
-//        std::cout << "fTrueBeamParticlePDGCode: " << fTrueBeamParticlePDGCode << std::endl;
-        fTrueBeamParticleStartX     = true_beam_particle->Position(0).X();
-        fTrueBeamParticleStartY     = true_beam_particle->Position(0).Y();
-        fTrueBeamParticleStartZ     = true_beam_particle->Position(0).Z();
-
-        fTrueBeamParticleEndX     = true_beam_particle->EndX();
-        fTrueBeamParticleEndY     = true_beam_particle->EndY();
-        fTrueBeamParticleEndZ     = true_beam_particle->EndZ();
-
-//        std::cout << "fTrueBeamParticleStartZ: " << fTrueBeamParticleStartZ << std::endl;
-//        std::cout << "fTrueBeamParticleEndZ: " << fTrueBeamParticleEndZ << std::endl;
-
-        fTrueBeamParticleStartPx    = true_beam_particle->Px();
-        fTrueBeamParticleStartPy    = true_beam_particle->Py();
-        fTrueBeamParticleStartPz    = true_beam_particle->Pz();
-
-        fTrueBeamStartDirX = (fTrueBeamParticleStartPx)/(true_beam_particle->P());
-        fTrueBeamStartDirY = (fTrueBeamParticleStartPy)/(true_beam_particle->P());
-        fTrueBeamStartDirZ = (fTrueBeamParticleStartPz)/(true_beam_particle->P());
-
-//        std::cout << "fTrueBeamStartDirX: " << fTrueBeamStartDirX << std::endl;
-//        std::cout << "fTrueBeamStartDirY: " << fTrueBeamStartDirY << std::endl;
-//        std::cout << "fTrueBeamStartDirZ: " << fTrueBeamStartDirZ << std::endl;
-
-//        std::cout << "1" << std::endl;
-/*        auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();
-        fTrueBeamParticleStartX_SCE_corrected = fTrueBeamParticleStartX-SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleStartX,fTrueBeamParticleStartY,fTrueBeamParticleStartZ)).X();
-        fTrueBeamParticleStartY_SCE_corrected = fTrueBeamParticleStartY+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleStartX,fTrueBeamParticleStartY,fTrueBeamParticleStartZ)).Y();
-        fTrueBeamParticleStartZ_SCE_corrected = fTrueBeamParticleStartZ+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleStartX,fTrueBeamParticleStartY,fTrueBeamParticleStartZ)).Z();*/
-//        std::cout << "2" << std::endl;
-
-        auto beamHandle = e.getValidHandle<std::vector<beam::ProtoDUNEBeamEvent>>("generator");
-
-        if (beamHandle.isValid())
-        {
-            art::fill_ptr_vector(beamVec, beamHandle);
-        }
-
-        else
-            std::cout << "invalid beam handle" << std::endl;
-
-//        std::cout << "3" << std::endl;
-        const beam::ProtoDUNEBeamEvent beamEvent = *(beamVec.at(0));
-//        const beam::ProtoDUNEBeamEvent beamEvent = fBeamlineUtils.GetBeamEvent(e);
-//        std::cout << "3.5" << std::endl;
-//        std::cout << "fBeamlineUtils.IsGoodBeamlineTrigger(e): " << fBeamlineUtils.IsGoodBeamlineTrigger(e) << std::endl;
-/*        if (e.isRealData() && !fBeamlineUtils.IsGoodBeamlineTrigger(e)) 
-        {
-            beam_inst_valid = false;
-            return;
-        }*/
-//        std::cout << "4" << std::endl;
-        auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();
-        int nTracks = beamEvent.GetBeamTracks().size();
-//        std::cout << "nTracks: " << nTracks << std::endl;
-        if( nTracks > 0 )
-        {
-            beam_inst_X = beamEvent.GetBeamTracks()[0].Trajectory().End().X();
-            beam_inst_Y = beamEvent.GetBeamTracks()[0].Trajectory().End().Y();
-            beam_inst_Z = beamEvent.GetBeamTracks()[0].Trajectory().End().Z();
-
-//            std::cout << "true mc length: " << beamEvent.GetBeamTracks()[0].Length() << std::endl;
-
-//            std::cout << "beam_inst_X: " << beam_inst_X << std::endl;
-//            std::cout << "beam_inst_Y: " << beam_inst_Y << std::endl;
-//            std::cout << "beam_inst_Z: " << beam_inst_Z << std::endl;
-
-//            auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();
-            fBeamInst_startVertex_X_SCE_corrected = beam_inst_X-SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).X();
-            fBeamInst_startVertex_Y_SCE_corrected = beam_inst_Y+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Y();
-            fBeamInst_startVertex_Z_SCE_corrected = beam_inst_Z+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Z();
-
-//            std::cout << "fBeamInst_startVertex_X_SCE_corrected: " << fBeamInst_startVertex_X_SCE_corrected << std::endl;
-//            std::cout << "fBeamInst_startVertex_Y_SCE_corrected: " << fBeamInst_startVertex_Y_SCE_corrected << std::endl;
-//            std::cout << "fBeamInst_startVertex_Z_SCE_corrected: " << fBeamInst_startVertex_Z_SCE_corrected << std::endl;
-
-        }
-//        std::cout << "5" << std::endl;
-
-//        std::cout << "fTrueBeamParticleEnergy: " << fTrueBeamParticleEnergy << std::endl;
-//        std::cout << "fTrueBeamParticlePDGCode: " << fTrueBeamParticlePDGCode << std::endl;
-
-//        std::cout << "fTrueBeamParticleStartX: " << fTrueBeamParticleStartX << std::endl;
-//        std::cout << "fTrueBeamParticleStartY: " << fTrueBeamParticleStartY << std::endl;
-//        std::cout << "fTrueBeamParticleStartZ: " << fTrueBeamParticleStartZ << std::endl;
-
-//        std::cout << "fTrueBeamParticleStartPx: " << fTrueBeamParticleStartPx << std::endl;
-//        std::cout << "fTrueBeamParticleStartPy: " << fTrueBeamParticleStartPy << std::endl;
-//        std::cout << "fTrueBeamParticleStartPz: " << fTrueBeamParticleStartPz << std::endl;
-//        int beam_num_traj_points = true_beam_particle->NumberTrajectoryPoints();
-
-//        std::cout << "true_beam_particle first X: " << true_beam_particle->Vx(0) << std::endl;
-//        std::cout << "true_beam_particle first Y: " << true_beam_particle->Vy(0) << std::endl;
-//        std::cout << "true_beam_particle first Z: " << true_beam_particle->Vz(0) << std::endl;
-
-/*        std::cout << "true_beam_particle first X SCE corrected: " << ((true_beam_particle->Vx(0))-SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(0),true_beam_particle->Vy(0),true_beam_particle->Vz(0))).X() << std::endl;
-        std::cout << "true_beam_particle first Y SCE corrected: " << ((true_beam_particle->Vy(0))+SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(0),true_beam_particle->Vy(0),true_beam_particle->Vz(0))).Y() << std::endl;
-        std::cout << "true_beam_particle first Z SCE corrected: " << ((true_beam_particle->Vz(0))+SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(0),true_beam_particle->Vy(0),true_beam_particle->Vz(0))).Z() << std::endl;*/
-
-//        std::cout << "true_beam_particle last X: " << true_beam_particle->Vx(beam_num_traj_points-1) << std::endl;
-//        std::cout << "true_beam_particle last Y: " << true_beam_particle->Vy(beam_num_traj_points-1) << std::endl;
-//        std::cout << "true_beam_particle last Z: " << true_beam_particle->Vz(beam_num_traj_points-1) << std::endl;
-
-/*        std::cout << "true_beam_particle last X SCE corrected: " << ((true_beam_particle->Vx(beam_num_traj_points))-SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(beam_num_traj_points),true_beam_particle->Vy(beam_num_traj_points),true_beam_particle->Vz(beam_num_traj_points))).X() << std::endl;
-        std::cout << "true_beam_particle last Y SCE corrected: " << ((true_beam_particle->Vy(beam_num_traj_points))+SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(beam_num_traj_points),true_beam_particle->Vy(beam_num_traj_points),true_beam_particle->Vz(beam_num_traj_points))).Y() << std::endl;
-        std::cout << "true_beam_particle last Z SCE corrected: " << ((true_beam_particle->Vz(beam_num_traj_points))+SCE)->GetPosOffsets(geo::Point_t(true_beam_particle->Vx(beam_num_traj_points),true_beam_particle->Vy(beam_num_traj_points),true_beam_particle->Vz(beam_num_traj_points))).Z() << std::endl;*/
-
-
-//        std::cout << "true_beam_particle end X: " << true_beam_particle->EndX() << std::endl;
-//        std::cout << "true_beam_particle end Y: " << true_beam_particle->EndY() << std::endl;
-//        std::cout << "true_beam_particle end Z: " << true_beam_particle->EndZ() << std::endl;
-
-        float true_beam_particle_SCE_end_X = fTrueBeamParticleEndX-SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).X();
-        float true_beam_particle_SCE_end_Y = fTrueBeamParticleEndY+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Y();
-        float true_beam_particle_SCE_end_Z = fTrueBeamParticleEndZ+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Z();
-
-
-        fTrueBeamParticleInteractionX = true_beam_particle_SCE_end_X;       
-        fTrueBeamParticleInteractionY = true_beam_particle_SCE_end_Y;       
-        fTrueBeamParticleInteractionZ = true_beam_particle_SCE_end_Z;       
-
-//        std::cout << "true_beam_particle SCE corrected end X: " << true_beam_particle_SCE_end_X << std::endl;
-//        std::cout << "true_beam_particle SCE corrected end Y: " << true_beam_particle_SCE_end_Y << std::endl;
-//        std::cout << "true_beam_particle SCE corrected end Z: " << true_beam_particle_SCE_end_Z << std::endl;
-        
-        fBeam_length_by_traj_points = sqrt(((true_beam_particle_SCE_end_X-fBeamInst_startVertex_X_SCE_corrected)*(true_beam_particle_SCE_end_X-fBeamInst_startVertex_X_SCE_corrected)) + ((true_beam_particle_SCE_end_Y-fBeamInst_startVertex_Y_SCE_corrected)*(true_beam_particle_SCE_end_Y-fBeamInst_startVertex_Y_SCE_corrected)) + ((true_beam_particle_SCE_end_Z-fBeamInst_startVertex_Z_SCE_corrected)*(true_beam_particle_SCE_end_Z-fBeamInst_startVertex_Z_SCE_corrected)));
-
-//        std::cout << "fBeam_length_by_traj_points: " << fBeam_length_by_traj_points << std::endl;
-
-        fTrueBeamParticleNhits = fProtoDUNETruthUtils.GetMCParticleHits( clockData, *true_beam_particle, e, fHitTag ).size();
-
-        fPrimaryBeamParticleLength = fProtoDUNETruthUtils.GetMCParticleLengthInTPCActiveVolume(*true_beam_particle, tpcActiveXLow, tpcActiveXHigh, tpcActiveYLow, tpcActiveYHigh, tpcActiveZLow, tpcActiveZHigh);
-
-//        std::cout << "fPrimaryBeamParticleLength: " << fPrimaryBeamParticleLength << std::endl;
+        fDoesTrueBeamParticleExist = 1;
+        tier0MCParticleHits = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *true_beam_particle, e, "hitpdune" );
     }
+    
+//    std::cout << "tier0MCParticleHits size: " << tier0MCParticleHits.size() << std::endl;
+    fTier0MCParticleHitsSize = tier0MCParticleHits.size();
 
-//==================Accessing Reco Info Block==============================
+//For tier0, count associated hits with reco beam Particle
 
-/*========To do list=======================================================
-
-    search for kaons
-
-
-=========================================================================*/
     art::ValidHandle<std::vector<recob::PFParticle>> recoParticles = e.getValidHandle<std::vector<recob::PFParticle>>(fPFParticleLabel);
 
     std::vector<const recob::PFParticle*> beamParticles = fProtoDUNEPFParticleUtils.GetPFParticlesFromBeamSlice(e,fPFParticleLabel);
 //    std::cout << "beamParticles.size(): " << beamParticles.size() << std::endl;
+
+    std::vector< const recob::Hit* > tier0recoBeamParticleHits;
 
     if(beamParticles.size() == 0)
     {
@@ -463,234 +516,431 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
         for(const recob::PFParticle* particle : beamParticles)
         {
-            const recob::Track* thisTrack = fProtoDUNEPFParticleUtils.GetPFParticleTrack(*particle,e,fPFParticleLabel,fTrackLabel);
-            const recob::Shower* thisShower = fProtoDUNEPFParticleUtils.GetPFParticleShower(*particle,e,fPFParticleLabel,fShowerLabel);
-
-            if(thisTrack != 0x0)
-            {
-                fReco_beam_pfp_topology = 1;
-                fPrimaryRecoPfpLength = thisTrack->Length();
-//                std::cout << "fPrimaryRecoPfpLength: " << fPrimaryRecoPfpLength << std::endl;
-
-                const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*particle,e,fPFParticleLabel,fTrackLabel);
-
-                fRecoBeamParticleStartX = reco_primary_start_vertex.X();
-                fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
-                fRecoBeamParticleStartZ = reco_primary_start_vertex.Z();
-
-//                std::cout << "fRecoBeamParticleStartX: " << fRecoBeamParticleStartX << std::endl;
-//                std::cout << "fRecoBeamParticleStartY: " << fRecoBeamParticleStartY << std::endl;
-//                std::cout << "fRecoBeamParticleStartZ: " << fRecoBeamParticleStartZ << std::endl;
-
-                const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*particle,e,fPFParticleLabel,fTrackLabel);
-
-                fRecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
-                fRecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
-                fRecoBeamParticleInteractionZ = reco_primary_interaction_vertex.Z();
-
-//                std::cout << "fRecoBeamParticleInteractionX: " << fRecoBeamParticleInteractionX << std::endl;
-//                std::cout << "fRecoBeamParticleInteractionY: " << fRecoBeamParticleInteractionY << std::endl;
-//                std::cout << "fRecoBeamParticleInteractionZ: " << fRecoBeamParticleInteractionZ << std::endl;
-
-                fRecoBeamStartDirX = (thisTrack->StartDirection()).X();
-                fRecoBeamStartDirY = (thisTrack->StartDirection()).Y();
-                fRecoBeamStartDirZ = (thisTrack->StartDirection()).Z();
-
-//                std::cout << "fRecoBeamStartDirX: " << fRecoBeamStartDirX << std::endl;
-//                std::cout << "fRecoBeamStartDirY: " << fRecoBeamStartDirY << std::endl;
-//                std::cout << "fRecoBeamStartDirZ: " << fRecoBeamStartDirZ << std::endl;           
-
-//                std::cout << "Beam particle is track-like" << std::endl;
-            }
-    
-            if(thisShower != 0x0) 
-            {
-                fReco_beam_pfp_topology = 0;
-                fPrimaryRecoPfpLength = thisShower->Length();
-//                std::cout << "fPrimaryRecoPfpLength: " << fPrimaryRecoPfpLength << std::endl;
-
-                const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*particle,e,fPFParticleLabel,fTrackLabel);
-
-                fRecoBeamParticleStartX = reco_primary_start_vertex.X();
-                fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
-                fRecoBeamParticleStartZ = reco_primary_start_vertex.Z();
-
-                fRecoBeamStartDirX = (thisShower->Direction()).X();
-                fRecoBeamStartDirY = (thisShower->Direction()).Y();
-                fRecoBeamStartDirZ = (thisShower->Direction()).Z();
-
-//                std::cout << "fRecoBeamParticleStartX: " << fRecoBeamParticleStartX << std::endl;
-//                std::cout << "fRecoBeamParticleStartY: " << fRecoBeamParticleStartY << std::endl;
-//                std::cout << "fRecoBeamParticleStartZ: " << fRecoBeamParticleStartZ << std::endl;
-
-//                std::cout << "Beam particle is shower-like" << std::endl;
-            }
-        
-
-            const simb::MCParticle* bestMatchedMcParticleFromPFParticle;
-            bestMatchedMcParticleFromPFParticle = (fProtoDUNETruthUtils.GetMCParticleFromPFParticle(clockData, *particle, e, fPFParticleLabel));
-            fbestMatchedMCParticleFromPFParticlePdgCode = bestMatchedMcParticleFromPFParticle->PdgCode();
-    
-            fpurity = fProtoDUNETruthUtils.GetPurity(clockData, *particle, e, fPFParticleLabel); 
-//            std::cout << "purity: " << fpurity << std::endl; 
-
-            fcompleteness = fProtoDUNETruthUtils.GetCompleteness(clockData, *particle, e, "pandora", "hitpdune");
-//            std::cout << "completeness: " << fcompleteness << std::endl;
+            tier0recoBeamParticleHits = fProtoDUNEPFParticleUtils.GetPFParticleHits(*particle, e, fPFParticleLabel);
+//            std::cout << "tier0recoBeamParticleHits size: " << tier0recoBeamParticleHits.size() << std::endl;
         }
     }
 
     else
-    {
-        std::cout << "Either zero or more than one reconstructed beam particle!" << std::endl;
-        fIsBeamParticleReconstructed = 0;
-        fNumberOfReconstructedBeamParticle = beamParticles.size();
-    }
+        std::cout << "More than one reconstructed beam particle!" << std::endl;
+
+    fTier0recoBeamParticleHitsSize = tier0recoBeamParticleHits.size();
 
 
 
+//SharedHits block    
 
-//==========================================================================================================================
-//==========================================================================================================================
-//==========================================================================================================================
-////    art::ValidHandle<std::vector<recob::PFParticle>> recoParticles = e.getValidHandle<std::vector<recob::PFParticle>>(fPFParticleLabel);
-//    std::cout << "recoParticles: " << recoParticles->size() << std::endl;
-//    std::vector<const recob::PFParticle*> beamParticles = fProtoDUNEPFParticleUtils.GetPFParticlesFromBeamSlice(e,fPFParticleLabel);
-//    std::cout << "beamParticles.size(): " << beamParticles.size() << std::endl;
 
-////    std::vector<recob::PFParticle> recoBeamParticles;
-////    std::vector<recob::PFParticle> recoCosmicMuons;
-////    std::vector<recob::PFParticle> recoBeamParticles_2;
+    std::vector< const recob::Hit* > sharedTier0RecoTrueHits = fProtoDUNETruthUtils.GetSharedHits(clockData, *true_beam_particle, *beamParticles[0], e, fPFParticleLabel);
+//    std::cout << "sharedTier0RecoTrueHits size: " << sharedTier0RecoTrueHits.size() << std::endl;
 
-/*    std::cout << "recoBeamParticle before: " << recoBeamParticles.size() << std::endl;
-    std::cout << "recoBeamParticles_2 before: " << recoBeamParticles_2.size() << std::endl;
-    std::cout << "recoCosmicMuons before: " << recoCosmicMuons.size() << std::endl;*/
+    fSharedTier0RecoTrueHitsSize = sharedTier0RecoTrueHits.size();
 
-////    for(unsigned int k = 0; k < recoParticles->size(); ++k)
-////    {
-////        const recob::PFParticle particle = recoParticles->at(k);
+//Reconstruction efficiency criteria
 
-////        if((particle.IsPrimary() == 1) && (fProtoDUNEPFParticleUtils.IsBeamParticle(particle, e, fPFParticleLabel) == 1))
-////        {
-            //std::cout << "Is particle primary? " << particle.IsPrimary() << std::endl;
-//            fRecoBeamParticlePDGCode = particle.Self();
-//            std::cout << "recoBeamParticles_2 PDGCode written into tree: " << fRecoBeamParticlePDGCode << std::endl;
-//            auto pfp_spacepoints = fProtoDUNEPFParticleUtils.GetPFParticleSpacePoints(particle, e, fPFParticleLabel);
-//            std::cout << "pfp_spacepoints size: " << pfp_spacepoints.size() << std::endl;
-            
-//            auto pfp_spacepoint_first = pfp_spacepoints[0];
-//            auto pfp_spacepoint_last = pfp_spacepoints[(pfp_spacepoints.size())-1];
-           
-//            std::cout << "pfp_spacepoint_last x: " << pfp_spacepoint_last->X() << std::endl;
-//            float reco_length_by_spacepoints = sqrt((()*())+(()*())+(()*()))
-        
-////            recoBeamParticles_2.push_back(particle);
-////        }
+    if( ((tier0MCParticleHits.size()) != 0) && ((tier0recoBeamParticleHits.size()) != 0) && (((static_cast<float>(sharedTier0RecoTrueHits.size()))/(static_cast<float>(tier0MCParticleHits.size()))) >= 0.5) && (((static_cast<float>(sharedTier0RecoTrueHits.size()))/(static_cast<float>(tier0recoBeamParticleHits.size()))) >= 0.5) )
+        fTier0RecoMCParticleMatch = 1;
 
-////        if(abs(particle.PdgCode()) != 13)         
-////            recoBeamParticles.push_back(particle);
-
-////        else
-////            recoCosmicMuons.push_back(particle);
-////    }
-
-/*    std::cout << "recoBeamParticles after: " << recoBeamParticles.size() << std::endl;*/
-////    std::cout << "recoBeamParticles_2 after: " << recoBeamParticles_2.size() << std::endl;
-////    fNumberOfReconstructedBeamParticle = recoBeamParticles_2.size();
-
-////    fIsBeamParticleReconstructed = 0;    
-
-////    if (recoBeamParticles_2.size() == 1)
-////    {
-////        fIsBeamParticleReconstructed = 1;
-//        fRecoBeamParticlePDGCode = recoBeamParticles_2[0]->Self(); 
-////        fRecoBeamParticlePDGCode = recoBeamParticles_2[0].PdgCode();  
-////        std::cout << "fRecoBeamParticlePDGCode: " << fRecoBeamParticlePDGCode << std::endl;
-////        const simb::MCParticle* bestMatchedMcParticleFromPFParticle;
-
-////        bestMatchedMcParticleFromPFParticle = (fProtoDUNETruthUtils.GetMCParticleFromPFParticle(clockData, recoBeamParticles_2[0], e, fPFParticleLabel));
-////        fbestMatchedMCParticleFromPFParticlePdgCode = bestMatchedMcParticleFromPFParticle->PdgCode();
-
-////        fpurity = fProtoDUNETruthUtils.GetPurity(clockData, recoBeamParticles_2[0], e, fPFParticleLabel); 
-////        std::cout << "purity: " << fpurity << std::endl; 
-
-////        fcompleteness = fProtoDUNETruthUtils.GetCompleteness(clockData, recoBeamParticles_2[0], e, "pandora", "hitpdune");
-////        std::cout << "completeness: " << fcompleteness << std::endl; 
-
-//        std::cout << "bestMatchedMCParticleFromPFParticlePdgCode: " << fbestMatchedMCParticleFromPFParticlePdgCode << std::endl;
-
-//        std::cout << "recoBeamParticles_2 PDGCode: " << recoBeamParticles_2[0] << std::endl;
-//        std::cout << "recoBeamParticles_2 PDGCode written into tree: " << fRecoBeamParticlePDGCode << std::endl;
-        
-////        auto recoBeamParticleVertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(recoBeamParticles_2[0], e, fPFParticleLabel, fTrackLabel);
+//calculating quatities
     
-////        fRecoBeamParticleStartX = recoBeamParticleVertex.X();
-////        fRecoBeamParticleStartY = recoBeamParticleVertex.Y();
-////        fRecoBeamParticleStartZ = recoBeamParticleVertex.Z();
+    if(fTier0RecoMCParticleMatch == 1)
+    {
+        //Truth quatities
+        fTrueBeamParticleEnergy     = true_beam_particle->E();
+        fTrueBeamParticlePDGCode    = true_beam_particle->PdgCode();
+        fTrueBeamParticleStartX     = true_beam_particle->Position(0).X();
+        fTrueBeamParticleStartY     = true_beam_particle->Position(0).Y();
+        fTrueBeamParticleStartZ     = true_beam_particle->Position(0).Z();
+        fTrueBeamParticleEndX       = true_beam_particle->EndX();
+        fTrueBeamParticleEndY       = true_beam_particle->EndY();
+        fTrueBeamParticleEndZ       = true_beam_particle->EndZ();
+        fTrueBeamParticleStartPx    = true_beam_particle->Px();
+        fTrueBeamParticleStartPy    = true_beam_particle->Py();
+        fTrueBeamParticleStartPz    = true_beam_particle->Pz();
+        fTrueBeamStartDirX          = (fTrueBeamParticleStartPx)/(true_beam_particle->P());
+        fTrueBeamStartDirY          = (fTrueBeamParticleStartPy)/(true_beam_particle->P());
+        fTrueBeamStartDirZ          = (fTrueBeamParticleStartPz)/(true_beam_particle->P());
+        fTrueBeamLengthVersion3     = true_beam_particle->Trajectory().TotalLength();
+        std::vector<art::Ptr<beam::ProtoDUNEBeamEvent>> beamVec;
+        auto beamHandle = e.getValidHandle<std::vector<beam::ProtoDUNEBeamEvent>>("generator");
 
+        if (beamHandle.isValid())
+            art::fill_ptr_vector(beamVec, beamHandle);
 
-//        std::cout << "fRecoBeamParticleStartX: " << fRecoBeamParticleStartX << std::endl;
-//        std::cout << "fRecoBeamParticleStartY: " << fRecoBeamParticleStartY << std::endl;
-//        std::cout << "fRecoBeamParticleStartZ: " << fRecoBeamParticleStartZ << std::endl;
+        else
+            std::cout << "invalid beam handle" << std::endl;
 
-//        fRecoBeamParticleStartPx = recoBeamParticles_2[0]->Px();
-//        fRecoBeamParticleStartPy = recoBeamParticles_2[0]->Py();
-//        fRecoBeamParticleStartPz = recoBeamParticles_2[0]->Pz();
+        const beam::ProtoDUNEBeamEvent beamEvent = *(beamVec.at(0));
 
-////        const std::vector< art::Ptr< recob::Hit > > beamPFP_hits = fProtoDUNEPFParticleUtils.GetPFParticleHits_Ptrs( recoBeamParticles_2[0], e, fPFParticleLabel );
+        auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();
+        int nTracks = beamEvent.GetBeamTracks().size();
 
-////        fRecoBeamParticleNhits = beamPFP_hits.size();
-//        std::cout << "fRecoBeamParticleNhits: " << fRecoBeamParticleNhits << std::endl;
+        if( nTracks > 0 )
+        {
+            beam_inst_X = beamEvent.GetBeamTracks()[0].Trajectory().End().X();
+            beam_inst_Y = beamEvent.GetBeamTracks()[0].Trajectory().End().Y();
+            beam_inst_Z = beamEvent.GetBeamTracks()[0].Trajectory().End().Z();
+
+            fBeamInst_startVertex_X_SCE_corrected = beam_inst_X-SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).X();
+            fBeamInst_startVertex_Y_SCE_corrected = beam_inst_Y+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Y();
+            fBeamInst_startVertex_Z_SCE_corrected = beam_inst_Z+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Z();
+        }
+
+        float true_beam_particle_SCE_end_X = fTrueBeamParticleEndX-SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).X();
+        float true_beam_particle_SCE_end_Y = fTrueBeamParticleEndY+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Y();
+        float true_beam_particle_SCE_end_Z = fTrueBeamParticleEndZ+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Z();
+
+        fTrueBeamParticleInteractionX = true_beam_particle_SCE_end_X;       
+        fTrueBeamParticleInteractionY = true_beam_particle_SCE_end_Y;       
+        fTrueBeamParticleInteractionZ = true_beam_particle_SCE_end_Z;       
+
+        fBeam_length_by_traj_points = sqrt(((true_beam_particle_SCE_end_X-fBeamInst_startVertex_X_SCE_corrected)*(true_beam_particle_SCE_end_X-fBeamInst_startVertex_X_SCE_corrected)) + ((true_beam_particle_SCE_end_Y-fBeamInst_startVertex_Y_SCE_corrected)*(true_beam_particle_SCE_end_Y-fBeamInst_startVertex_Y_SCE_corrected)) + ((true_beam_particle_SCE_end_Z-fBeamInst_startVertex_Z_SCE_corrected)*(true_beam_particle_SCE_end_Z-fBeamInst_startVertex_Z_SCE_corrected)));
+
+        fTrueBeamParticleNhits = fProtoDUNETruthUtils.GetMCParticleHits( clockData, *true_beam_particle, e, fHitTag ).size();
+
+        fPrimaryBeamParticleLength = fProtoDUNETruthUtils.GetMCParticleLengthInTPCActiveVolume(*true_beam_particle, tpcActiveXLow, tpcActiveXHigh, tpcActiveYLow, tpcActiveYHigh, tpcActiveZLow, tpcActiveZHigh);
+
+        //Reco Quantities
         
-////    }
+        fRecoBeamParticleNhits = fProtoDUNEPFParticleUtils.GetPFParticleHits( *beamParticles[0], e, fPFParticleLabel).size();
 
-////    else
-////    {
-////        std::cout << "The number of reconstructed beam particle is not 1." << std::endl;
-////        std::cout << "Number of reconstructed beam particle is " << recoBeamParticles_2.size() << std::endl;
-////    }
+        const recob::Track* thisTrack = fProtoDUNEPFParticleUtils.GetPFParticleTrack(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+        const recob::Shower* thisShower = fProtoDUNEPFParticleUtils.GetPFParticleShower(*beamParticles[0],e,fPFParticleLabel,fShowerLabel);
 
-//    std::cout << "fIsBeamParticleReconstructed: " << fIsBeamParticleReconstructed << std::endl;
+        if(thisTrack != 0x0)
+        {
+            fReco_beam_pfp_topology = 1;
+            fPrimaryRecoPfpLength = thisTrack->Length();
 
-//    std::cout << "recoCosmicMuons after: " << recoCosmicMuons.size() << std::endl;*/
+            const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 
-//    std::cout << "1" << std::endl;
-////    if(recoParticles.isValid())
-////    {
-//        std::cout << "2" << std::endl;
-////        const art::FindManyP<recob::Track> findTracks(recoParticles, e, fTrackLabel);
-//        std::cout << "findTracks: " << findTracks.size() << std::endl;
-//        std::cout << "3" << std::endl;
-////        fPrimaryRecoPfpLength = -1.0;//not really kaon length right now. More like primary particle length
+            fRecoBeamParticleStartX = reco_primary_start_vertex.X();
+            fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
+            fRecoBeamParticleStartZ = reco_primary_start_vertex.Z();
 
-////        for(unsigned int p = 0; p < recoParticles->size(); ++p)
-////        {
-//            std::cout << "4" << std::endl;
-////            const recob::PFParticle particle = recoParticles->at(p);
-//            std::cout << "5" << std::endl;
-//            std::cout << "particle.IsPrimary(): " << particle.IsPrimary() << std::endl;
-//            std::cout << "fProtoDUNEPFParticleUtils.IsBeamParticle(particle, e, fPFParticleLabel): " << fProtoDUNEPFParticleUtils.IsBeamParticle(particle, e, fPFParticleLabel) << std::endl;
-////            if((particle.IsPrimary() && fProtoDUNEPFParticleUtils.IsBeamParticle(particle, e, fPFParticleLabel)) == 1)
-////            {
-//                std::cout << "6" << std::endl;
-////                const std::vector<art::Ptr<recob::Track>>pfpTracks = findTracks.at(p);
-//                std::cout << "7" << std::endl;
-//                std::cout << "pfpTracks.size(): " << pfpTracks.size() << std::endl;
-////                if(pfpTracks.size() == 1)
-//                if(pfpTracks.size() == 1 && particle.PdgCode() == 211)
-////                {
-//                    std::cout << "8" << std::endl;
-////                    art::Ptr<recob::Track> thisTrack = pfpTracks.at(0);
-////                    fPrimaryRecoPfpLength = thisTrack->Length();
-////                    std::cout << "fPrimaryRecoPfpLength: " << fPrimaryRecoPfpLength <<  std::endl;
-////                }
-////            }
-////        }
-////    }
-//==========================================================================================================================
-//==========================================================================================================================
-//==========================================================================================================================
+            const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+
+            fRecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
+            fRecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
+            fRecoBeamParticleInteractionZ = reco_primary_interaction_vertex.Z();
+
+            fRecoBeamStartDirX = (thisTrack->StartDirection()).X();
+            fRecoBeamStartDirY = (thisTrack->StartDirection()).Y();
+            fRecoBeamStartDirZ = (thisTrack->StartDirection()).Z();
+
+            float interactionVertexDx = fRecoBeamParticleInteractionX - fTrueBeamParticleInteractionX;
+            float interactionVertexDy = fRecoBeamParticleInteractionY - fTrueBeamParticleInteractionY;
+            float interactionVertexDz = fRecoBeamParticleInteractionZ - fTrueBeamParticleInteractionZ;
+
+            fInteractionVertexDr = sqrt(((interactionVertexDx)*(interactionVertexDx))+((interactionVertexDy)*(interactionVertexDy))+((interactionVertexDz)*(interactionVertexDz)));
+        }
+
+        if(thisShower != 0x0) 
+        {
+            fReco_beam_pfp_topology = 0;
+            fPrimaryRecoPfpLength = thisShower->Length();
+
+            const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+
+            fRecoBeamParticleStartX = reco_primary_start_vertex.X();
+            fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
+            fRecoBeamParticleStartZ = reco_primary_start_vertex.Z();
+
+            fRecoBeamStartDirX = (thisShower->Direction()).X();
+            fRecoBeamStartDirY = (thisShower->Direction()).Y();
+            fRecoBeamStartDirZ = (thisShower->Direction()).Z();
+
+            fInteractionVertexDr = 0;
+        }
+
+        const simb::MCParticle* bestMatchedMcParticleFromPFParticle;
+        bestMatchedMcParticleFromPFParticle = (fProtoDUNETruthUtils.GetMCParticleFromPFParticle(clockData, *beamParticles[0], e, fPFParticleLabel));
+        fbestMatchedMCParticleFromPFParticlePdgCode = bestMatchedMcParticleFromPFParticle->PdgCode();
+    
+        fpurity = fProtoDUNETruthUtils.GetPurity(clockData, *beamParticles[0], e, fPFParticleLabel); 
+//        std::cout << "purity: " << fpurity << std::endl; 
+
+        fcompleteness = fProtoDUNETruthUtils.GetCompleteness(clockData, *beamParticles[0], e, "pandora", "hitpdune");
+//        std::cout << "completeness: " << fcompleteness << std::endl;
+
+        float startVertexDx = fRecoBeamParticleStartX - fBeamInst_startVertex_X_SCE_corrected;
+        float startVertexDy = fRecoBeamParticleStartY - fBeamInst_startVertex_Y_SCE_corrected;
+        float startVertexDz = fRecoBeamParticleStartZ - fBeamInst_startVertex_Z_SCE_corrected;
+
+        fStartVertexDr = sqrt(((startVertexDx)*(startVertexDx))+((startVertexDy)*(startVertexDy))+((startVertexDz)*(startVertexDz)));
+
+    }
     fTree->Fill();
 
+    if (fTier0RecoMCParticleMatch == 1)
+    {
+        //For Tier 1 true particles
+
+        int number_true_tier1_daughter = true_beam_particle->NumberDaughters();
+
+        for (int i = 0; i < number_true_tier1_daughter; i++)
+        {   
+            auto part = plist[ true_beam_particle->Daughter(i) ]; 
+//            std::cout << "particle pdgcode: " << part->PdgCode() << std::endl;
+//            const std::vector < const recob::Hit*> mcHitsVector = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *part, e, fHitTag);
+//            int nMCHits = mcHitsVector.size();
+//            std::cout << "nMCHits: " << nMCHits << std::endl;
+      
+            tier1TrueParticles.push_back(part); 
+        }
+
+/*        int test = tier1TrueParticles.size();
+        std::cout << "tier1TrueParticles size: " << test << std::endl;
+//------------------------------------------------------------------------------------------------------------------
+        for (int i = 0; i < test; i++)
+        {
+            
+            if ( ((tier1TrueParticles[i]->PdgCode()) != 111) && ((tier1TrueParticles[i]->PdgCode()) != 2112) && ((tier1TrueParticles[i]->PdgCode()) < 1000000000))
+                tier1TrueParticlesQ1.push_back(tier1TrueParticles[i]);
+        
+            else
+            {
+                std::cout << "------------------granddaughters------------------------" << std::endl;
+                int number_true_granddaughter = tier1TrueParticles[i]->NumberDaughters();
+                std::cout << "number_true_granddaughter: " << number_true_granddaughter << std::endl;
+                for (int j = 0; j < number_true_granddaughter; j++)
+                {
+                    auto granddaughter = plist[ tier1TrueParticles[i]->Daughter(j)];
+                    tier1TrueParticlesQ1.push_back(granddaughter);
+                }
+                std::cout << "--------------------------------------------------------" << std::endl;
+//                tier1TrueParticlesQ1.erase(i);
+            }
+        }
+
+        std::cout << "tier1TrueParticlesQ1 size: " << tier1TrueParticlesQ1.size() << std::endl;
+        
+
+        test2 = apply_true_particle_quality_cuts(tier1TrueParticles);*/
+        tier1TrueParticlesQ1 = apply_true_particle_quality_cuts(tier1TrueParticles);
+//        std::cout << "tier1TrueParticlesQ1: " << tier1TrueParticlesQ1.size() << std::endl;
+
+        int numUnwantedParticles = count_unwanted_particles(tier1TrueParticles);
+
+        while (numUnwantedParticles != 0)
+        {
+            tier1TrueParticlesQ1 = apply_true_particle_quality_cuts(tier1TrueParticles);
+            numUnwantedParticles = count_unwanted_particles(tier1TrueParticlesQ1);
+            
+            if (numUnwantedParticles != 0)
+            {
+                tier1TrueParticles = tier1TrueParticlesQ1;
+                tier1TrueParticlesQ1.empty();
+            }
+        }
+
+//        std::cout << "tier1TrueParticlesQ1.size(): " << tier1TrueParticlesQ1.size() << std::endl;
+//        int new_size = tier1TrueParticlesQ1.size();
+/*        for (int i = 0; i < new_size; i++)
+        {
+            int pdgcode = tier1TrueParticlesQ1[i]->PdgCode();
+            const std::vector < const recob::Hit*> mcHitsVector = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *tier1TrueParticlesQ1[i], e, fHitTag);
+            int nMCHits = mcHitsVector.size();
+            std::cout << "pdgcode: " << pdgcode << std::endl;
+            std::cout << "nMCHits: " << nMCHits << std::endl;
+        }*/
+//------------------------------------------------------------------------------------------------------------------
+
+
+        //For tier 1 reco particles
+
+        for(const recob::PFParticle* particle : beamParticles)
+        {
+            for(const int daughterID : particle->Daughters())
+            {
+                const recob::PFParticle *daughterParticle = &(recoParticles->at(daughterID));
+                tier1RecoParticles.push_back(daughterParticle);
+            }
+        }
+
+        int array_row_size = tier1TrueParticlesQ1.size();
+//        std::cout << "array_row_size: " << array_row_size << std::endl;
+        int array_col_size = tier1RecoParticles.size();
+        fTier1RecoParticleNumber = array_col_size;
+         
+//        std::cout << "array_col_size: " << array_col_size << std::endl;
+
+        std::vector< std::vector<int> > twoDTrueRecoSharedHitsMatrix;
+        
+        for (int i = 0; i < array_row_size; i++)
+        {
+//            std::vector<const recob::Hit*> trueHits = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *tier1TrueParticles[i], e, fHitTag)
+
+            for (int j = 0; j < array_col_size; j++)
+            {
+                std::vector<int> v1;
+//                std::vector<const recob::Hit*> recoHits = fProtoDUNEPFParticleUtils.GetPFParticleHits(*tier1RecoParticles[j], e, fPFParticleLabel);
+                std::vector< const recob::Hit* > hit_matched_vector = fProtoDUNETruthUtils.GetSharedHits(clockData, *tier1TrueParticlesQ1[i], *tier1RecoParticles[j], e, fPFParticleLabel);
+
+                int hit_matched = hit_matched_vector.size();
+                if (hit_matched != 0)
+                {
+                    v1 = {i, j, hit_matched};
+                    twoDTrueRecoSharedHitsMatrix.push_back(v1);
+                }            
+            }
+            
+        }
+
+        int row = twoDTrueRecoSharedHitsMatrix.size();
+        fTier1MCParticleNumber = row;
+//        int col = twoDTrueRecoSharedHitsMatrix[0].size();
+        std::vector< std::vector<int> > twoDTrueRecoSharedHitsSortedMatchedMatrix;
+
+//       for (int i = 0; i < row; i++)
+//            std::cout << "shared hits: " << twoDTrueRecoSharedHitsMatrix[i][0] << " , " << twoDTrueRecoSharedHitsMatrix[i][1] << " , " << twoDTrueRecoSharedHitsMatrix[i][2] << std::endl;
+
+        std::sort(twoDTrueRecoSharedHitsMatrix.begin(), twoDTrueRecoSharedHitsMatrix.end(), [] ( const std::vector<int>& v1, const std::vector<int>& v2 )->bool
+        {
+            return v1[2] > v2[2];
+        }); //<========twoDTrueRecoSharedHitsMatrix is the vector<vector<int>>
+
+//        for (int i = 0; i < row; i++)
+//            std::cout << "SORTED shared hits: " << twoDTrueRecoSharedHitsMatrix[i][0] << " , " << twoDTrueRecoSharedHitsMatrix[i][1] << " , " << twoDTrueRecoSharedHitsMatrix[i][2] << std::endl;
+
+//        for (int i = 0; i < row; i++)
+
+/*        for (int i = 0; i < row; i++)
+        {
+            if ( (twoDTrueRecoSharedHitsSortedMatchedMatrix[i][0] != twoDTrueRecoSharedHitsMatrix[i][0]) && (twoDTrueRecoSharedHitsSortedMatchedMatrix[i] != twoDTrueRecoSharedHitsMatrix[i]))
+                twoDTrueRecoSharedHitsSortedMatchedMatrix.push_back(twoDTrueRecoSharedHitsMatrix[i])
+        }
+            
+        for (int i = 0; i < row; i++)
+            std::cout << "SORTED matched shared hits: " << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][0] << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][1] << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][2] << std::endl;*/
+
+        std::vector<int> taken_true_particle_index;
+        std::vector<int> taken_reco_particle_index;
+
+        for (int i = 0; i < row; i++)
+        {
+            
+            int true_count = std::count (taken_true_particle_index.begin(), taken_true_particle_index.end(), twoDTrueRecoSharedHitsMatrix[i][0]);
+            int reco_count = std::count (taken_reco_particle_index.begin(), taken_reco_particle_index.end(), twoDTrueRecoSharedHitsMatrix[i][1]);
+
+            if ( (true_count == 0) && (reco_count == 0) )
+            {
+                taken_true_particle_index.push_back(twoDTrueRecoSharedHitsMatrix[i][0]);
+                taken_reco_particle_index.push_back(twoDTrueRecoSharedHitsMatrix[i][1]);
+                twoDTrueRecoSharedHitsSortedMatchedMatrix.push_back(twoDTrueRecoSharedHitsMatrix[i]);
+            }
+//            std::cout << "taken_true_particle_index size: " << taken_true_particle_index.size() << std::endl;
+//            std::cout << "taken_reco_particle_index size: " << taken_reco_particle_index.size() << std::endl;
+
+//            std::cout << "true_count: " << true_count << std::endl;
+//            std::cout << "reco_count: " << reco_count << std::endl;
+
+        }
+
+//        for (int i = 0; i < row; i++)
+//            std::cout << "SORTED matched shared hits: " << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][0] << " , " << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][1] << " , " << twoDTrueRecoSharedHitsSortedMatchedMatrix[i][2] << std::endl;
+
+//                fpurity = fProtoDUNETruthUtils.GetPurity(clockData, *beamParticles[0], e, fPFParticleLabel); 
+//        fcompleteness = fProtoDUNETruthUtils.GetCompleteness(clockData, *beamParticles[0], e, "pandora", "hitpdune");
+        int matched_row = twoDTrueRecoSharedHitsSortedMatchedMatrix.size();
+        fTier1MCRecoMatchedNumber = matched_row;
+//        std::cout << "matched_row size: " << matched_row << std::endl;
+        for (int i = 0; i < matched_row; i++)
+        {
+            auto trueParticle = tier1TrueParticlesQ1[twoDTrueRecoSharedHitsSortedMatchedMatrix[i][0]];
+            auto recoParticle = tier1RecoParticles[twoDTrueRecoSharedHitsSortedMatchedMatrix[i][1]];
+
+            fTier1TrueBeamParticleNhits = fProtoDUNETruthUtils.GetMCParticleHits( clockData, *trueParticle, e, fHitTag ).size();
+            fTier1RecoBeamParticleNhits = fProtoDUNEPFParticleUtils.GetPFParticleHits( *recoParticle, e, fPFParticleLabel).size();
+            auto const* SCE = lar::providerFrom<spacecharge::SpaceChargeService>();
+//--------------------------------true tier 1 quantities--------------------------------------------------------------------------
+            fTier1TrueBeamParticleLength     = trueParticle->Trajectory().TotalLength();
+            fTier1TrueBeamParticleEndX       = trueParticle->EndX();
+            fTier1TrueBeamParticleEndY       = trueParticle->EndY();
+            fTier1TrueBeamParticleEndZ       = trueParticle->EndZ();
+            fTier1TrueBeamParticlePDGCode    = trueParticle->PdgCode();
+            fTier1TrueBeamParticleStartX     = trueParticle->Position(0).X();
+            fTier1TrueBeamParticleStartY     = trueParticle->Position(0).Y();
+            fTier1TrueBeamParticleStartZ     = trueParticle->Position(0).Z();
+
+//            tier1beam_inst_X = trueParticle->Trajectory().X(trueParticle->Trajectory().size());
+//            tier1beam_inst_Y = trueParticle->Trajectory().Y(trueParticle->Trajectory().size());
+//            tier1beam_inst_Z = trueParticle->Trajectory().Z(trueParticle->Trajectory().size());
+
+            tier1beam_inst_X = fTier1TrueBeamParticleStartX;
+            tier1beam_inst_Y = fTier1TrueBeamParticleStartY;
+            tier1beam_inst_Z = fTier1TrueBeamParticleStartZ;
+
+            fTier1BeamInst_startVertex_X_SCE_corrected = tier1beam_inst_X-SCE->GetPosOffsets(geo::Point_t(tier1beam_inst_X,tier1beam_inst_Y,tier1beam_inst_Z)).X();
+            fTier1BeamInst_startVertex_Y_SCE_corrected = tier1beam_inst_Y+SCE->GetPosOffsets(geo::Point_t(tier1beam_inst_X,tier1beam_inst_Y,tier1beam_inst_Z)).Y();
+            fTier1BeamInst_startVertex_Z_SCE_corrected = tier1beam_inst_Z+SCE->GetPosOffsets(geo::Point_t(tier1beam_inst_X,tier1beam_inst_Y,tier1beam_inst_Z)).Z();
+        
+
+            float tier1true_beam_particle_SCE_end_X = fTier1TrueBeamParticleEndX-SCE->GetPosOffsets(geo::Point_t(fTier1TrueBeamParticleEndX,fTier1TrueBeamParticleEndY,fTier1TrueBeamParticleEndZ)).X();
+            float tier1true_beam_particle_SCE_end_Y = fTier1TrueBeamParticleEndY+SCE->GetPosOffsets(geo::Point_t(fTier1TrueBeamParticleEndX,fTier1TrueBeamParticleEndY,fTier1TrueBeamParticleEndZ)).Y();
+            float tier1true_beam_particle_SCE_end_Z = fTier1TrueBeamParticleEndZ+SCE->GetPosOffsets(geo::Point_t(fTier1TrueBeamParticleEndX,fTier1TrueBeamParticleEndY,fTier1TrueBeamParticleEndZ)).Z();
+
+            fTier1TrueBeamParticleInteractionX = tier1true_beam_particle_SCE_end_X;       
+            fTier1TrueBeamParticleInteractionY = tier1true_beam_particle_SCE_end_Y;       
+            fTier1TrueBeamParticleInteractionZ = tier1true_beam_particle_SCE_end_Z;       
+
+            fTier1Beam_length_by_traj_points = sqrt(((tier1true_beam_particle_SCE_end_X-fTier1BeamInst_startVertex_X_SCE_corrected)*(tier1true_beam_particle_SCE_end_X-fTier1BeamInst_startVertex_X_SCE_corrected)) + ((tier1true_beam_particle_SCE_end_Y-fTier1BeamInst_startVertex_Y_SCE_corrected)*(tier1true_beam_particle_SCE_end_Y-fTier1BeamInst_startVertex_Y_SCE_corrected)) + ((tier1true_beam_particle_SCE_end_Z-fTier1BeamInst_startVertex_Z_SCE_corrected)*(tier1true_beam_particle_SCE_end_Z-fTier1BeamInst_startVertex_Z_SCE_corrected)));
+
+
+//--------------------------------reco tier 1 quantities--------------------------------------------------------------------------
+            fTier1purity = fProtoDUNETruthUtils.GetPurity(clockData, *recoParticle, e, fPFParticleLabel);
+            fTier1completeness = fProtoDUNETruthUtils.GetCompleteness(clockData, *recoParticle, e, "pandora", "hitpdune");
+            
+            const recob::Track* thisTrack = fProtoDUNEPFParticleUtils.GetPFParticleTrack(*recoParticle,e,fPFParticleLabel,fTrackLabel); 
+            const recob::Shower* thisShower = fProtoDUNEPFParticleUtils.GetPFParticleShower(*recoParticle,e,fPFParticleLabel,fShowerLabel);
+
+            if(thisTrack != 0x0)
+            {
+                fTier1Reco_beam_pfp_topology = 1;
+                fTier1PrimaryRecoPfpLength = thisTrack->Length();
+
+                const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel);
+
+                fTier1RecoBeamParticleStartX = reco_primary_start_vertex.X();
+                fTier1RecoBeamParticleStartY = reco_primary_start_vertex.Y();
+                fTier1RecoBeamParticleStartZ = reco_primary_start_vertex.Z();
+
+                const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel);
+
+                fTier1RecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
+                fTier1RecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
+                fTier1RecoBeamParticleInteractionZ = reco_primary_interaction_vertex.Z();
+
+                fTier1RecoBeamStartDirX = (thisTrack->StartDirection()).X();
+                fTier1RecoBeamStartDirY = (thisTrack->StartDirection()).Y();
+                fTier1RecoBeamStartDirZ = (thisTrack->StartDirection()).Z();
+            }
+
+            if(thisShower != 0x0) 
+            {
+                fTier1Reco_beam_pfp_topology = 0;
+                fTier1PrimaryRecoPfpLength = thisShower->Length();
+
+                const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+
+                fTier1RecoBeamParticleStartX = reco_primary_start_vertex.X();
+                fTier1RecoBeamParticleStartY = reco_primary_start_vertex.Y();
+                fTier1RecoBeamParticleStartZ = reco_primary_start_vertex.Z();
+
+                fTier1RecoBeamStartDirX = (thisShower->Direction()).X();
+                fTier1RecoBeamStartDirY = (thisShower->Direction()).Y();
+                fTier1RecoBeamStartDirZ = (thisShower->Direction()).Z();
+            }
+
+        float tier1StartVertexDx = fTier1RecoBeamParticleStartX - fTier1BeamInst_startVertex_X_SCE_corrected;
+        float tier1StartVertexDy = fTier1RecoBeamParticleStartY - fTier1BeamInst_startVertex_Y_SCE_corrected;
+        float tier1StartVertexDz = fTier1RecoBeamParticleStartZ - fTier1BeamInst_startVertex_Z_SCE_corrected;
+
+        fTier1StartVertexDr = sqrt(((tier1StartVertexDx)*(tier1StartVertexDx))+((tier1StartVertexDy)*(tier1StartVertexDy))+((tier1StartVertexDz)*(tier1StartVertexDz)));
+            fTree->Fill();
+        }
+        
+    }
 }
 
 void analysis::PDSPKaonAnalysis::beginJob()
@@ -701,15 +951,9 @@ void analysis::PDSPKaonAnalysis::beginJob()
 
   // Truth Tree Branches    
     fTree->Branch("eventID",&fEventID,"eventID/i");
-//    fTree->Branch("nPFParticles",&fNPFParticles,"nPFParticles/i");
-//    fTree->Branch("nPrimaries",&fNPrimaries,"nPrimaries/i");
-//    fTree->Branch("nPrimaryDaughters",&fNPrimaryDaughters,"nPrimaryDaughters/i");
-//    fTree->Branch("trueKaonEnergy",&fTrueKaonEnergy,"trueKaonEnergy/F");
-//    fTree->Branch("truePrimaryEnergy",&fTruePrimaryEnergy,"truePrimaryEnergy/F");
+
     fTree->Branch("trueBeamParticleEnergy",&fTrueBeamParticleEnergy,"trueBeamParticleEnergy/F");
     fTree->Branch("trueBeamParticlePDGCode",&fTrueBeamParticlePDGCode,"trueBeamParticlePDGCode/I");
-
-//    fTree->Branch("kaonLength",&fKaonLength,"kaonLength/F");
 
     fTree->Branch("trueBeamParticleStartX",&fTrueBeamParticleStartX,"trueBeamParticleStartX/F");
     fTree->Branch("trueBeamParticleStartY",&fTrueBeamParticleStartY,"trueBeamParticleStartY/F");
@@ -719,9 +963,6 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("trueBeamParticleEndY",&fTrueBeamParticleEndY,"trueBeamParticleEndY/F");
     fTree->Branch("trueBeamParticleEndZ",&fTrueBeamParticleEndZ,"trueBeamParticleEndZ/F");
 
-//    fTree->Branch("trueBeamParticleStartX_SCE_corrected",&fTrueBeamParticleStartX_SCE_corrected,"trueBeamParticleStartX_SCE_corrected/F");
-//    fTree->Branch("trueBeamParticleStartY_SCE_corrected",&fTrueBeamParticleStartY_SCE_corrected,"trueBeamParticleStartY_SCE_corrected/F");
-//    fTree->Branch("trueBeamParticleStartZ_SCE_corrected",&fTrueBeamParticleStartZ_SCE_corrected,"trueBeamParticleStartZ_SCE_corrected/F");
 
     fTree->Branch("beam_inst_X",&beam_inst_X,"beam_inst_X/F");
     fTree->Branch("beam_inst_Y",&beam_inst_Y,"beam_inst_Y/F");
@@ -730,11 +971,6 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("trueBeamParticleStartPx",&fTrueBeamParticleStartPx,"trueBeamParticleStartPx/F");
     fTree->Branch("trueBeamParticleStartPy",&fTrueBeamParticleStartPy,"trueBeamParticleStartPy/F");
     fTree->Branch("trueBeamParticleStartPz",&fTrueBeamParticleStartPz,"trueBeamParticleStartPz/F");
-
-//    fTree->Branch("beam_inst_X",&beam_inst_X,"beam_inst_X/F");
-//    fTree->Branch("beam_inst_Y",&beam_inst_Y,"beam_inst_Y/F");
-//    fTree->Branch("beam_inst_Z",&beam_inst_Z,"beam_inst_Z/F");
-//    fTree->Branch("beam_inst_valid", &beam_inst_valid,"beam_inst_X/I");
 
   // Reco Tree Branches   
     fTree->Branch("bestMatchedMCParticleFromPFParticlePdgCode",&fbestMatchedMCParticleFromPFParticlePdgCode,"bestMatchedMCParticleFromPFParticlePdgCode/I");
@@ -773,7 +1009,7 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("trueBeamParticleInteractionY",&fTrueBeamParticleInteractionY,"TrueBeamParticleInteractionY/F");//
     fTree->Branch("trueBeamParticleInteractionZ",&fTrueBeamParticleInteractionZ,"TrueBeamParticleInteractionZ/F");//
 
-//    fTree->Branch("recoBeamParticleNhits", &fRecoBeamParticleNhits, "recoBeamParticleNhits/I");
+    fTree->Branch("recoBeamParticleNhits", &fRecoBeamParticleNhits, "recoBeamParticleNhits/I");
 
     fTree->Branch("trueBeamStartDirX",&fTrueBeamStartDirX,"trueBeamStartDirX/F");//
     fTree->Branch("trueBeamStartDirY",&fTrueBeamStartDirY,"trueBeamStartDirY/F");//
@@ -786,11 +1022,97 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("primaryRecoPfpLength",&fPrimaryRecoPfpLength,"primaryRecoPfpLength/F");//
     fTree->Branch("beam_length_by_traj_points",&fBeam_length_by_traj_points,"beam_length_by_traj_points/F");//
 
+    fTree->Branch("fTier0MCParticleHitsSize",&fTier0MCParticleHitsSize,"fTier0MCParticleHitsSize/I");//
+    fTree->Branch("fTier0recoBeamParticleHitsSize",&fTier0recoBeamParticleHitsSize,"fTier0recoBeamParticleHitsSize/I");//
+    fTree->Branch("fSharedTier0RecoTrueHitsSize",&fSharedTier0RecoTrueHitsSize,"fSharedTier0RecoTrueHitsSize/I");//
+    fTree->Branch("fTier0RecoMCParticleMatch",&fTier0RecoMCParticleMatch,"fTier0RecoMCParticleMatch/I");//
+
+    fTree->Branch("tier1purity",&fTier1purity,"tier1purity/F");//
+    fTree->Branch("tier1completeness",&fTier1completeness,"tier1completeness/F");//
+    fTree->Branch("tier1beamInst_startVertex_X_SCE_corrected",&fTier1BeamInst_startVertex_X_SCE_corrected,"tier1beamInst_startVertex_X_SCE_corrected/F");//
+    fTree->Branch("tier1beamInst_startVertex_Y_SCE_corrected",&fTier1BeamInst_startVertex_Y_SCE_corrected,"tier1beamInst_startVertex_Y_SCE_corrected/F");//
+    fTree->Branch("tier1beamInst_startVertex_Z_SCE_corrected",&fTier1BeamInst_startVertex_Z_SCE_corrected,"tier1beamInst_startVertex_Z_SCE_corrected/F");//
+    fTree->Branch("tier1beam_length_by_traj_points",&fTier1Beam_length_by_traj_points,"tier1beam_length_by_traj_points/F");//
+    fTree->Branch("tier1recoBeamParticleStartX",&fTier1RecoBeamParticleStartX,"tier1recoBeamParticleStartX/F");//
+    fTree->Branch("tier1recoBeamParticleStartY",&fTier1RecoBeamParticleStartY,"tier1recoBeamParticleStartY/F");//
+    fTree->Branch("tier1recoBeamParticleStartZ",&fTier1RecoBeamParticleStartZ,"tier1recoBeamParticleStartZ/F");//
+    fTree->Branch("tier1recoBeamParticleInteractionX",&fTier1RecoBeamParticleInteractionX,"tier1recoBeamParticleInteractionX/F");//
+    fTree->Branch("tier1recoBeamParticleInteractionY",&fTier1RecoBeamParticleInteractionY,"tier1recoBeamParticleInteractionY/F");//
+    fTree->Branch("tier1recoBeamParticleInteractionZ",&fTier1RecoBeamParticleInteractionZ,"tier1recoBeamParticleInteractionZ/F");//
+    fTree->Branch("tier1recoBeamStartDirX",&fTier1RecoBeamStartDirX,"tier1recoBeamStartDirX/F");//
+    fTree->Branch("tier1recoBeamStartDirY",&fTier1RecoBeamStartDirY,"tier1recoBeamStartDirY/F");//
+    fTree->Branch("tier1recoBeamStartDirZ",&fTier1RecoBeamStartDirZ,"tier1recoBeamStartDirZ/F");//
+    fTree->Branch("tier1primaryRecoPfpLength",&fTier1PrimaryRecoPfpLength,"tier1primaryRecoPfpLength/F");//
+    fTree->Branch("fTier1MCParticleNumber",&fTier1MCParticleNumber,"fTier1MCParticleNumber/I");//
+    fTree->Branch("fTier1RecoParticleNumber",&fTier1RecoParticleNumber,"fTier1RecoParticleNumber/I");//
+    fTree->Branch("fTier1MCRecoMatchedNumber",&fTier1MCRecoMatchedNumber,"fTier1MCRecoMatchedNumber/I");//
+    fTree->Branch("fTier1TrueBeamParticleLength",&fTier1TrueBeamParticleLength,"fTier1TrueBeamParticleLength/F");//
+    fTree->Branch("fTier1TrueBeamParticleInteractionX",&fTier1TrueBeamParticleInteractionX,"fTier1TrueBeamParticleInteractionX/F");//
+    fTree->Branch("fTier1TrueBeamParticleInteractionY",&fTier1TrueBeamParticleInteractionY,"fTier1TrueBeamParticleInteractionY/F");//fix
+    fTree->Branch("fTier1TrueBeamParticleInteractionZ",&fTier1TrueBeamParticleInteractionZ,"fTier1TrueBeamParticleInteractionZ/F");//fix
+    fTree->Branch("fTier1RecoBeamParticleNhits",&fTier1RecoBeamParticleNhits,"fTier1RecoBeamParticleNhits/I");//
+    fTree->Branch("fTier1TrueBeamParticleNhits",&fTier1TrueBeamParticleNhits,"fTier1TrueBeamParticleNhits/I");//
+    fTree->Branch("fTier1TrueBeamParticlePDGCode",&fTier1TrueBeamParticlePDGCode,"fTier1TrueBeamParticlePDGCode/I");//
+    fTree->Branch("fStartVertexDr",&fStartVertexDr,"fStartVertexDr/F");
+    fTree->Branch("fInteractionVertexDr",&fInteractionVertexDr,"fInteractionVertexDr/F");
+    fTree->Branch("fTrueBeamLengthVersion3",&fTrueBeamLengthVersion3,"fTrueBeamLengthVersion3/F");
+    fTree->Branch("fTier1StartVertexDr",&fTier1StartVertexDr,"fTier1StartVertexDr/F");
 }
 
 void analysis::PDSPKaonAnalysis::endJob()
 {
   // Implementation of optional member function here.
 }
+
+/*bool analysis::PDSPKaonAnalysis::sortcol( const std::vector<int>& v1, const std::vector<int>& v2 )    //<=============THIS ONE, DOM
+{
+    return v1[2] > v2[2];
+}*/
+std::vector<const simb::MCParticle*> analysis::PDSPKaonAnalysis::apply_true_particle_quality_cuts(std::vector<const simb::MCParticle*> inputVector)
+{
+//    std::cout << "testing apply_true_particle_quality_cuts function" << std::endl;
+    int size = inputVector.size();
+    std::vector<const simb::MCParticle*> outputVector;
+    const sim::ParticleList & plist = pi_serv->ParticleList();
+    for (int i = 0; i < size; i++)
+    {
+            
+        if ( ((inputVector[i]->PdgCode()) != 111) && ((inputVector[i]->PdgCode()) != 2112) && ((inputVector[i]->PdgCode()) < 1000000000))
+            outputVector.push_back(inputVector[i]);
+        
+        else
+        {
+//            std::cout << "------------------granddaughters------------------------" << std::endl;
+            int number_true_granddaughter = inputVector[i]->NumberDaughters();
+//            std::cout << "number_true_granddaughter: " << number_true_granddaughter << std::endl;
+            for (int j = 0; j < number_true_granddaughter; j++)
+            {
+                auto granddaughter = plist[ inputVector[i]->Daughter(j)];
+                outputVector.push_back(granddaughter);
+            }
+//            std::cout << "--------------------------------------------------------" << std::endl;
+            }
+        }        
+
+    return outputVector;
+
+}
+
+int analysis::PDSPKaonAnalysis::count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector)
+{
+//    std::cout << "testing count_unwanted_particles function" << std::endl;
+    int size = inputVector.size();
+    int count = 0;
+    for (int i = 0; i < size; i++)
+    {
+        if ( ((inputVector[i]->PdgCode()) == 111) || ((inputVector[i]->PdgCode()) == 2112) || ((inputVector[i]->PdgCode()) > 1000000000))
+            ++count;
+    }
+
+//    std::cout << "count: " << count << std::endl;
+
+    return count;
+}
+
 
 DEFINE_ART_MODULE(analysis::PDSPKaonAnalysis)
