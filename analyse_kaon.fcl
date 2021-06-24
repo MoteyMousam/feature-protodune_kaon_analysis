@@ -16,6 +16,7 @@ analyzeEvents:
     GeneratorTag:               "generator"
     HitTag:                     "hitpdune"
     BeamModuleLabel:            "beamevent"
+    CalorimetryTagSCE:      "pandoracalo"
 }
 
 END_PROLOG
