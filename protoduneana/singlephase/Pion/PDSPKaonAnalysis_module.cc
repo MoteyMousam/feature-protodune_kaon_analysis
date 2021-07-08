@@ -56,10 +56,15 @@
 #include "Math/Vector3D.h"
 #include "TGraph2D.h"
 #include "TROOT.h"
-
+#include <stdlib.h>
+#include <TLorentzVector.h>
 namespace analysis {
   class PDSPKaonAnalysis;
 }
+
+//double distance2(double x, double y, double z, double * p);
+//void line(double t, double * p, double & x, double & y, double & z);
+//void SumDistance2(int &, double *, double & sum, double * par, int);
 
 
 class analysis::PDSPKaonAnalysis : public art::EDAnalyzer {
@@ -88,10 +93,9 @@ private:
 //void calculate_tier0_quatities
 //void calculate_tier1_quatities
 std::vector<const simb::MCParticle*> apply_true_particle_quality_cuts(std::vector<const simb::MCParticle*> inputVector);
+std::vector<const simb::MCParticle*> get_daughter_mc_em_particles(std::vector<const simb::MCParticle*> inputVector);
+int diff(std::vector<const simb::MCParticle*> inputVector_1, std::vector<const simb::MCParticle*> inputVector_2);
 int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
-//double distance2(double x, double y, double z, double * p);
-//void line(double t, double * p, double & x, double & y, double & z);
-//void SumDistance2(int &, double *, double & sum, double * par, int);
 //TVector3 FitLine(const std::vector<TVector3> & input);
 
   TTree *fTree;
@@ -137,9 +141,11 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   float fTier0RecoLength;
   int fTier0MCParticleHitsSize;
   int fTier0RecoMCParticleMatch;
-
-
-
+  int fDoesMCBeamParticleExist;
+  int fDoesRecoBeamParticleExist;
+  int fDoesMCRecoMatch;
+  float fTier0MCLength;
+  float fTier0SCERecoLength;
 
   float fRecoBeamParticleStartX;
   float fRecoBeamParticleStartY;
@@ -155,8 +161,8 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
 
   float fBeamInst_startVertex_dr_SCE_corrected; // need to code
   
-  int fDoesTrueBeamParticleExist; // need to code
-  int fDoesRecoBeamParticleExist;
+  //int fDoesTrueBeamParticleExist; // need to code
+  //int fDoesRecoBeamParticleExist;
 
 
   float fPrimaryBeamParticleLength;
@@ -231,9 +237,9 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   int fTier1MCPDGCode;
   float fTier1Completeness;
   float fTier1Purity;
-//  float fTier1MCStartVertexX;
-//  float fTier1MCStartVertexY;
-//  float fTier1MCStartVertexZ;
+  float fTier1MCStartVertexX;
+  float fTier1MCStartVertexY;
+  float fTier1MCStartVertexZ;
   float fTier1RecoStartVertexX_SCE_corrected;
   float fTier1RecoStartVertexY_SCE_corrected;
   float fTier1RecoStartVertexZ_SCE_corrected;
@@ -255,7 +261,8 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   float fTier1RecoLength;
   int fTier1MCParticleHitsSize;
   int fTier1RecoMCParticleMatch;
-
+  float fTier1MCLength;
+  float fTier1SCERecoLength;
 
   float fTier1TrueBeamParticleEnergy;
 
@@ -335,6 +342,9 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   float fTier1TrueBeamParticleLength;
 
   int fMCRecoMatchedHits;
+
+  int fTier0RecoID;
+  int fTier1RecoID;
 
 //-------------------------------------------------------------------
 //  protoana::ProtoDUNEBeamlineUtils fBeamlineUtils;
@@ -443,7 +453,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //    fTier0recoBeamParticleHitsSize              = -9999;
 //    fSharedTier0RecoTrueHitsSize                = -9999;
     fTier0RecoMCParticleMatch                   = 0;
-    fDoesTrueBeamParticleExist                  = -9999;
+    fDoesMCBeamParticleExist                    = -9999;
     fStartVertexDr                              = -9999;
     fTier0RecoStartVertexX_SCE_corrected        = -9999;
     fTier0RecoStartVertexY_SCE_corrected        = -9999;
@@ -552,6 +562,19 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     fTier1RecoStartDirectionZ_SCE_corrected         = -9999;
     fTier1MCLengthByTrajPoints                      = -9999;
     fTier1MCPDGCode                                 = -9999;
+
+    fDoesRecoBeamParticleExist                      = -9999;
+    fDoesMCRecoMatch                                = -9999;
+
+    fTier0RecoID                                    = -9999;
+    fTier1RecoID                                    = -9999;
+
+    fTier0SCERecoLength                             = -9999;
+    fTier1SCERecoLength                             = -9999;
+
+    fTier1MCLength                                  = -9999;
+    fTier0MCLength                                  = -9999;
+    fTrueBeamLengthVersion3                         = -9999;
 //------------------------------------------------------------------
 
 //==================Accessing Truth Info Block=============================
@@ -578,12 +601,12 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         auto mcTruths = e.getValidHandle<std::vector<simb::MCTruth>>(fGeneratorTag);
         
         true_beam_particle = fProtoDUNETruthUtils.GetGeantGoodParticle((*mcTruths)[0],e);
-        fDoesTrueBeamParticleExist = 1;
+        fDoesMCBeamParticleExist = 1;
         tier0MCParticleHits = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *true_beam_particle, e, "hitpdune" );
     }
     
     else
-        fDoesTrueBeamParticleExist = 0;        
+        fDoesMCBeamParticleExist = 0;        
 //    std::cout << "tier0MCParticleHits size: " << tier0MCParticleHits.size() << std::endl;
     fTier0MCParticleHitsSize = tier0MCParticleHits.size();
 
@@ -598,6 +621,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
     if(beamParticles.size() == 0)
     {
+        fDoesRecoBeamParticleExist = 0;
         std::cerr << "We found no beam particles for this event... moving on" << std::endl;
         return;
     }
@@ -636,8 +660,13 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //    std::cout << "recoPurity: " << recoPurity << ", recoCompleteness: " << recoCompleteness << std::endl;
 
     if( ((tier0MCParticleHits.size()) != 0) && (recoPurity >= 0.1) && (recoCompleteness >= 0.5) )
+    {
         fTier0RecoMCParticleMatch = 1;
+        fDoesMCRecoMatch = 1;
+    }
 
+    else
+        fDoesMCRecoMatch = 0;
 //calculating quatities
 //    std::cout << "1" << std::endl;      
 //    std::cout << "fTier0RecoMCParticleMatch: " << fTier0RecoMCParticleMatch << std::endl;
@@ -659,6 +688,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         fTier0MCStartDirectionY     = (fTrueBeamParticleStartPy)/(true_beam_particle->P());
         fTier0MCStartDirectionZ     = (fTrueBeamParticleStartPz)/(true_beam_particle->P());
         fTrueBeamLengthVersion3     = true_beam_particle->Trajectory().TotalLength();
+
+//        std::cout << "tier0 PDG: " << fTier0MCPDGCode << std::endl;
+//        std::cout << "tier0 true (TOTAL)length: " << fTrueBeamLengthVersion3 << std::endl;
         std::vector<art::Ptr<beam::ProtoDUNEBeamEvent>> beamVec;
         auto beamHandle = e.getValidHandle<std::vector<beam::ProtoDUNEBeamEvent>>("generator");
 
@@ -683,7 +715,129 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //            fBeamInst_startVertex_Y_SCE_corrected = beam_inst_Y+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Y();
 //            fBeamInst_startVertex_Z_SCE_corrected = beam_inst_Z+SCE->GetPosOffsets(geo::Point_t(beam_inst_X,beam_inst_Y,beam_inst_Z)).Z();
         }
+//-------------------------------------------------------------------------------------------------------
+//A + dot(AP, AB) *AB
+        const simb::MCTrajectory & trueTier0Particle = true_beam_particle->Trajectory();
+        std::vector < TVector3 > trueParticleTraj;
+        std::vector < TVector3 > trueProjectedTrajPoints;
+        TVector3 trueStartPosition = {fTier0MCStartVertexX, fTier0MCStartVertexY, fTier0MCStartVertexZ};
+        TVector3 trueStartDirection = {fTier0MCStartDirectionX,fTier0MCStartDirectionY, fTier0MCStartDirectionZ};
 
+        if((fTier0MCPDGCode == abs(11)) || (fTier0MCPDGCode == 22))
+        {
+                std::vector < const simb::MCParticle*> tier0TrueParticles;
+                std::vector < const simb::MCParticle*> tier0AllTrueEMParticles;
+                tier0TrueParticles.push_back(true_beam_particle);
+//                std::cout << "tier0TrueParticles: " << tier0TrueParticles.size() << std::endl;
+                std::vector < const simb::MCParticle*> tier0TrueEMParticles = get_daughter_mc_em_particles(tier0TrueParticles);
+//                std::cout << "tier0TrueEMParticles: " << tier0TrueEMParticles.size() << std::endl;
+                
+                int check = diff(tier0AllTrueEMParticles, tier0TrueEMParticles);
+//                std::cout << "tier0AllTrueEMParticles before size: " << tier0AllTrueEMParticles.size() << std::endl;
+                tier0AllTrueEMParticles = get_daughter_mc_em_particles(tier0TrueEMParticles);    
+//                std::cout << "tier0AllTrueEMParticles middle size: " << tier0AllTrueEMParticles.size() << std::endl;                
+                while (check != 0)
+                {
+                    std::vector < const simb::MCParticle*> tier0AllTrueEMParticles_test = get_daughter_mc_em_particles(tier0AllTrueEMParticles);
+                    check = diff(tier0AllTrueEMParticles_test, tier0AllTrueEMParticles);
+//                    std::cout << "check: " << check << std::endl;
+                    if (check != 0)
+                    {
+                        tier0AllTrueEMParticles = tier0AllTrueEMParticles_test;
+                        tier0AllTrueEMParticles_test.empty();
+                    }
+                }
+//                std::cout << "tier0AllTrueEMParticles after size: " << tier0AllTrueEMParticles.size() << std::endl;
+                int tier0Size = tier0AllTrueEMParticles.size();
+                for(int i = 0; i < tier0Size; i++)
+                {
+                    const simb::MCTrajectory & trueTier0EMParticle = tier0AllTrueEMParticles[i]->Trajectory();
+                    int temp_size = trueTier0EMParticle.size();
+                    for(int j = 0; j < temp_size; j++)
+                    {
+                        TVector3 temp_TVec = {trueTier0EMParticle.X(j), trueTier0EMParticle.Y(j), trueTier0EMParticle.Z(j)};
+                        trueParticleTraj.push_back(temp_TVec);
+                    }
+                }
+
+                int size2 = trueParticleTraj.size();
+
+                for(int i = 0; i < size2; i++)
+                {
+                    TVector3 temp_vec = {trueParticleTraj[i][0], trueParticleTraj[i][1], trueParticleTraj[i][2]};
+                    TVector3 AP = temp_vec - trueStartPosition;
+    //                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+    //                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                    TVector3 projectedPoint = trueStartPosition + (AP.Dot(trueStartDirection))*(trueStartDirection);
+                    trueProjectedTrajPoints.push_back(projectedPoint);
+                } 
+
+                int size3 = trueProjectedTrajPoints.size();
+
+                float counter_length = 0;
+    //            std::cout << "init counter length: " << counter_length << std::endl;
+                for (int i = 0; i < size3; i++)
+                {
+                    float temp_length = (trueProjectedTrajPoints[i] - trueStartPosition).Mag(); 
+    //                std::cout << "temp length: " << temp_length << std::endl;
+                    if(temp_length > counter_length)
+                        counter_length = temp_length;
+                }
+               
+                fTier0MCLength = counter_length;             
+//                std::cout << "tier1 if true length: " << fTier0MCLength << std::endl;
+
+        }
+
+        else
+        {
+            int size = trueTier0Particle.size();
+            for (int i = 0; i < size; i++)
+            {
+                TVector3 temp_TVec = {trueTier0Particle.X(i), trueTier0Particle.Y(i), trueTier0Particle.Z(i)};
+                trueParticleTraj.push_back(temp_TVec);
+            }
+            int size2 = trueParticleTraj.size();
+            for(int i = 0; i < size2; i++)
+            {
+                TVector3 temp_vec = {trueParticleTraj[i][0], trueParticleTraj[i][1], trueParticleTraj[i][2]};
+                TVector3 AP = temp_vec - trueStartPosition;
+//                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+//                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                TVector3 projectedPoint = trueStartPosition + (AP.Dot(trueStartDirection))*(trueStartDirection);
+                trueProjectedTrajPoints.push_back(projectedPoint);
+            } 
+            int size3 = trueProjectedTrajPoints.size();
+            float counter_length = 0;
+//            std::cout << "init counter length: " << counter_length << std::endl;
+            for (int i = 0; i < size3; i++)
+            {
+                float temp_length = (trueProjectedTrajPoints[i] - trueStartPosition).Mag(); 
+//                std::cout << "temp length: " << temp_length << std::endl;
+                if(temp_length > counter_length)
+                    counter_length = temp_length;
+            }
+           
+            fTier0MCLength = counter_length;             
+//            std::cout << "tier0 else true length: " << fTier0MCLength << std::endl;
+        }
+//get_daughter_mc_em_particles(std::vector<const simb::MCParticle*>
+
+        
+//-------------------------------------------------------------------------------------------------------
+//        std::cout << "position x: " << trueParticle.X() << std::endl;
+//        std::cout << "position y: " << trueParticle.Y() << std::endl;
+//        std::cout << "position z: " << trueParticle.Z() << std::endl;
+/*        int momo = trueParticle.size();
+        std::cout << "trueParticle size: " << momo << std::endl;
+        for(int i = 0; i < momo; i++)
+        {
+            std::cout << "position x: " << trueParticle.Position(i).X() << std::endl;
+            std::cout << "position y: " << trueParticle.Position(i).Y() << std::endl;
+            std::cout << "position z: " << trueParticle.Position(i).Z() << std::endl;
+
+
+        }*/
 /*        float true_beam_particle_SCE_end_X = fTrueBeamParticleEndX-SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).X();
         float true_beam_particle_SCE_end_Y = fTrueBeamParticleEndY+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Y();
         float true_beam_particle_SCE_end_Z = fTrueBeamParticleEndZ+SCE->GetPosOffsets(geo::Point_t(fTrueBeamParticleEndX,fTrueBeamParticleEndY,fTrueBeamParticleEndZ)).Z();*/
@@ -705,6 +859,48 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
         //Reco Quantities
         
+
+        auto spacePoints = fProtoDUNEPFParticleUtils.GetPFParticleSpacePoints(*beamParticles[0], e, fPFParticleLabel);
+        std::vector< std::vector <double> > sceSpacePoints;
+        int k = spacePoints.size();
+/*        std::cout << "spacePoints size: " << k << std::endl;
+
+        std::cout << "front spacepoint x: " << spacePoints.front()->XYZ()[0] << std::endl;
+        std::cout << "front spacepoint y: " << spacePoints.front()->XYZ()[1] << std::endl;
+        std::cout << "front spacepoint z: " << spacePoints.front()->XYZ()[2] << std::endl;
+
+        std::cout << "back spacepoint x: " << spacePoints.back()->XYZ()[0] << std::endl;
+        std::cout << "back spacepoint y: " << spacePoints.back()->XYZ()[1] << std::endl;
+        std::cout << "back spacepoint z: " << spacePoints.back()->XYZ()[2] << std::endl;*/
+
+        for (int i = 0; i < k; i++)
+        {
+            double temp_x = spacePoints[i]->XYZ()[0]+SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+            double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+            double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+            std::vector <double> temp_vec = {temp_x, temp_y, temp_z};
+            sceSpacePoints.push_back(temp_vec);
+        }
+
+/*        std::sort(sceSpacePoints.begin(), sceSpacePoints.end(), [] ( const std::vector<int>& v1, const std::vector<int>& v2 )->bool
+        {
+            return v1[2] < v2[2];
+        });*/
+
+        int sceSpacePointSize = sceSpacePoints.size();
+//        std::cout << "sceSpacePoint size: " << sceSpacePointSize << std::endl;
+        
+/*        std::cout << "front sceSpacePoints x: " << sceSpacePoints[0][0] << std::endl;
+        std::cout << "front sceSpacePoints y: " << sceSpacePoints[0][1] << std::endl;
+        std::cout << "front sceSpacePoints z: " << sceSpacePoints[0][2] << std::endl;
+
+        std::cout << "back sceSpacePoints x: " << sceSpacePoints[m - 1][0] << std::endl;
+        std::cout << "back sceSpacePoints y: " << sceSpacePoints[m - 1][1] << std::endl;
+        std::cout << "back sceSpacePoints z: " << sceSpacePoints[m - 1][2] << std::endl;
+
+        const TVector3 A = {sceSpacePoints[0][0], sceSpacePoints[0][1], sceSpacePoints[0][2]};
+        const TVector3 B = {sceSpacePoints[m - 1][0], sceSpacePoints[m - 1][1], sceSpacePoints[m - 1][2]}; */
+
         fRecoBeamParticleNhits = fProtoDUNEPFParticleUtils.GetPFParticleHits( *beamParticles[0], e, fPFParticleLabel).size();
 
         const recob::Track* thisTrack = fProtoDUNEPFParticleUtils.GetPFParticleTrack(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
@@ -712,12 +908,13 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
         if(thisTrack != 0x0)
         {
+            fTier0RecoID = 1;
             fReco_beam_pfp_topology = 1;
             fTier0RecoLength = thisTrack->Length();
 //            std::cout << "3" << std::endl;
             auto calo = fProtoDUNETrackUtils.GetRecoTrackCalorimetry(*thisTrack, e, fTrackLabel, fCalorimetryTagSCE);
 
-            const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+            TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 
             fRecoBeamParticleStartX = reco_primary_start_vertex.X();
             fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
@@ -734,7 +931,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             fTier0StartVertexDr = sqrt(((startVertexDx)*(startVertexDx))+((startVertexDy)*(startVertexDy))+((startVertexDz)*(startVertexDz)));
             
 
-            const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+            TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 
             fRecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
             fRecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
@@ -757,88 +954,88 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //            std::cout << "4" << std::endl;
 
 //-------------------------------------------------------------------------------------------------------------------
+            float reco_start_dir_x = fRecoBeamStartDirX;
+            float reco_start_dir_y = fRecoBeamStartDirY;
+            float reco_start_dir_z = fRecoBeamStartDirZ;
 
-            bool found_calo = false;
-            size_t index = 0;
-            for ( index = 0; index < calo.size(); ++index)
+            float reco_length = fTier0RecoLength;
+
+            float reco_start_x = fRecoBeamParticleStartX;
+            float reco_start_y = fRecoBeamParticleStartY;
+            float reco_start_z = fRecoBeamParticleStartZ;
+
+            float reco_end_dir_x = reco_start_x + (0.2)*(reco_length)*(reco_start_dir_x);
+            float reco_end_dir_y = reco_start_y + (0.2)*(reco_length)*(reco_start_dir_y);
+            float reco_end_dir_z = reco_start_z + (0.2)*(reco_length)*(reco_start_dir_z);
+
+            float reco_end_dir_x_SCE_corrected = reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).X();
+            float reco_end_dir_y_SCE_corrected = reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Y();
+            float reco_end_dir_z_SCE_corrected = reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Z();
+
+            float startdirX_SCE_corrected = reco_end_dir_x_SCE_corrected - fTier0RecoStartVertexX_SCE_corrected;
+            float startdirY_SCE_corrected = reco_end_dir_y_SCE_corrected - fTier0RecoStartVertexY_SCE_corrected;
+            float startdirZ_SCE_corrected = reco_end_dir_z_SCE_corrected - fTier0RecoStartVertexX_SCE_corrected;
+
+            float reco_mag = sqrt(((startdirX_SCE_corrected)*(startdirX_SCE_corrected)) + ((startdirY_SCE_corrected)*(startdirY_SCE_corrected)) + ((startdirZ_SCE_corrected)*(startdirZ_SCE_corrected)));
+
+            fTier0RecoStartDirectionX_SCE_corrected = startdirX_SCE_corrected/reco_mag;
+            fTier0RecoStartDirectionY_SCE_corrected = startdirY_SCE_corrected/reco_mag;
+            fTier0RecoStartDirectionZ_SCE_corrected = startdirZ_SCE_corrected/reco_mag;
+//-----------------------------------------------------------------------------------------            
+/*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
+            std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
+            std::cout << "recoDirection z: " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
+
+            std::vector < TVector3 > projectedSpacePoints;
+            TVector3 recoDirection = {fTier0RecoStartDirectionX_SCE_corrected, fTier0RecoStartDirectionY_SCE_corrected, fTier0RecoStartDirectionZ_SCE_corrected}; 
+
+//            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
+
+//A + dot(AP, AB) *AB
+            TVector3 startPosition = {fTier0RecoStartVertexX_SCE_corrected,fTier0RecoStartVertexY_SCE_corrected,fTier0RecoStartVertexZ_SCE_corrected};
+
+/*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
+            std::cout << "startPosition y: " << startPosition.Y() << std::endl;
+            std::cout << "startPosition z: " << startPosition.Z() << std::endl;
+            std::cout << "startPosition mag: " << startPosition.Mag() << std::endl;*/
+
+            for(int i = 0; i < sceSpacePointSize; i++)
             {
-                if (calo[index].PlaneID().Plane == 2)
-                {
-                    found_calo = true;
-                    break; 
-                }
-            }
-
-            if (found_calo)
+                TVector3 temp_vec = {sceSpacePoints[i][0], sceSpacePoints[i][1], sceSpacePoints[i][2]};
+                TVector3 AP = temp_vec - startPosition;
+//                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+//                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                TVector3 projectedPoint = startPosition + (AP.Dot(recoDirection))*(recoDirection);
+                projectedSpacePoints.push_back(projectedPoint);
+            } 
+            
+            float counter_length = 0;
+//            std::cout << "init counter length: " << counter_length << std::endl;
+            for (int i = 0; i < sceSpacePointSize; i++)
             {
-                auto theXYZPoints = calo[index].XYZ();
-                std::sort(theXYZPoints.begin(), theXYZPoints.end(), [](auto a, auto b){return (a.Z() < b.Z());});
-
-                if (theXYZPoints.size())
-                {
-                    TVector3 dir((theXYZPoints.back().X() - theXYZPoints[0].X()), (theXYZPoints.back().Y() - theXYZPoints[0].Y()), (theXYZPoints.back().Z() - theXYZPoints[0].Z()));
-                    fTier0RecoStartDirectionX_SCE_corrected = dir.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = dir.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = dir.Unit().Z();
-                }
-
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }
-
-                if (theXYZPoints.size() > 1)
-                {
-                    TVector3 start_p1(theXYZPoints[0].X(), theXYZPoints[0].Y(), theXYZPoints[0].Z());
-                    TVector3 start_p2(theXYZPoints[1].X(), theXYZPoints[1].Y(), theXYZPoints[1].Z());
-                    TVector3 start_diff = start_p2 - start_p1;
-
-                    fTier0RecoStartDirectionX_SCE_corrected = start_diff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = start_diff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = start_diff.Unit().Z();
-                }
-
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }
-
-/*                if (theXYZPoints.size() > 2)
-                {
-                    std::vector<TVector3> input;
-                    for (size_t iP = 0; iP < 3; ++iP) 
-                    {
-                        input.push_back(TVector3(theXYZPoints[iP].X(), theXYZPoints[iP].Y(), theXYZPoints[iP].Z()));
-                    }
-
-                    TVector3 startDiff = FitLine(input);
-
-                    fTier0RecoStartDirectionX_SCE_corrected = startDiff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = startDiff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = startDiff.Unit().Z();
-                }
-                
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }*/
+                float temp_length = (projectedSpacePoints[i] - startPosition).Mag(); 
+//                std::cout << "temp length: " << temp_length << std::endl;
+                if(temp_length > counter_length)
+                    counter_length = temp_length;
             }
+           
+            fTier0SCERecoLength = counter_length; 
+
+//            std::cout << "tier0 reco track length: " << fTier0SCERecoLength << std::endl;
+//            std::cout << "final counter length: " << counter_length << std::endl;
 //---------------------------------------------------------------------------------------------------------------------
         }
 
         if(thisShower != 0x0) 
         {
+            fTier0RecoID = 0;
             fReco_beam_pfp_topology = 0;
             fTier0RecoLength = thisShower->Length();
 
             auto calo = fProtoDUNEShowerUtils.GetRecoShowerCalorimetry(*thisShower, e, fShowerLabel, fCalorimetryTagSCE);
-
+            
+//            auto showerHits = fProtoDUNEShowerUtils.GetRecoShowerHits(*thisShower, e, fShowerLabel);
+            
             const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 //            showerEnd = showerVertex + showerDir.unit()*ShowerLength;
 //            SCE showerEnd and showerVertex
@@ -866,78 +1063,76 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             fTier0InteractionVertexDr = 0;
 
 //-------------------------------------------------------------------------------------------------------------------
+            float reco_start_dir_x = fRecoBeamStartDirX;
+            float reco_start_dir_y = fRecoBeamStartDirY;
+            float reco_start_dir_z = fRecoBeamStartDirZ;
 
-            bool found_calo = false;
-            size_t index = 0;
-            for ( index = 0; index < calo.size(); ++index)
+            float reco_length = fTier0RecoLength;
+
+            float reco_start_x = fRecoBeamParticleStartX;
+            float reco_start_y = fRecoBeamParticleStartY;
+            float reco_start_z = fRecoBeamParticleStartZ;
+
+            float reco_end_dir_x = reco_start_x + (0.2)*(reco_length)*(reco_start_dir_x);
+            float reco_end_dir_y = reco_start_y + (0.2)*(reco_length)*(reco_start_dir_y);
+            float reco_end_dir_z = reco_start_z + (0.2)*(reco_length)*(reco_start_dir_z);
+
+            float reco_end_dir_x_SCE_corrected = reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).X();
+            float reco_end_dir_y_SCE_corrected = reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Y();
+            float reco_end_dir_z_SCE_corrected = reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Z();
+
+            float startdirX_SCE_corrected = reco_end_dir_x_SCE_corrected - fTier0RecoStartVertexX_SCE_corrected;
+            float startdirY_SCE_corrected = reco_end_dir_y_SCE_corrected - fTier0RecoStartVertexY_SCE_corrected;
+            float startdirZ_SCE_corrected = reco_end_dir_z_SCE_corrected - fTier0RecoStartVertexZ_SCE_corrected;
+
+            float reco_mag = sqrt(((startdirX_SCE_corrected)*(startdirX_SCE_corrected)) + ((startdirY_SCE_corrected)*(startdirY_SCE_corrected)) + ((startdirZ_SCE_corrected)*(startdirZ_SCE_corrected)));
+
+            fTier0RecoStartDirectionX_SCE_corrected = startdirX_SCE_corrected/reco_mag;
+            fTier0RecoStartDirectionY_SCE_corrected = startdirY_SCE_corrected/reco_mag;
+            fTier0RecoStartDirectionZ_SCE_corrected = startdirZ_SCE_corrected/reco_mag;
+//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------            
+/*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
+            std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
+            std::cout << "recoDirection z: " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
+
+            std::vector < TVector3 > projectedSpacePoints;
+            TVector3 recoDirection = {fTier0RecoStartDirectionX_SCE_corrected, fTier0RecoStartDirectionY_SCE_corrected, fTier0RecoStartDirectionZ_SCE_corrected}; 
+
+//            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
+
+//A + dot(AP, AB) *AB
+            TVector3 startPosition = {fTier0RecoStartVertexX_SCE_corrected,fTier0RecoStartVertexY_SCE_corrected,fTier0RecoStartVertexZ_SCE_corrected};
+
+/*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
+            std::cout << "startPosition y: " << startPosition.Y() << std::endl;
+            std::cout << "startPosition z: " << startPosition.Z() << std::endl;
+            std::cout << "startPosition mag: " << startPosition.Mag() << std::endl;*/
+
+            for(int i = 0; i < sceSpacePointSize; i++)
             {
-                if (calo[index].PlaneID().Plane == 2)
-                {
-                    found_calo = true;
-                    break; 
-                }
-            }
-
-            if (found_calo)
+                TVector3 temp_vec = {sceSpacePoints[i][0], sceSpacePoints[i][1], sceSpacePoints[i][2]};
+                TVector3 AP = temp_vec - startPosition;
+//                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+//                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                TVector3 projectedPoint = startPosition + (AP.Dot(recoDirection))*(recoDirection);
+                projectedSpacePoints.push_back(projectedPoint);
+            } 
+            
+            float counter_length = 0;
+//            std::cout << "init counter length: " << counter_length << std::endl;
+            for (int i = 0; i < sceSpacePointSize; i++)
             {
-                auto theXYZPoints = calo[index].XYZ();
-                std::sort(theXYZPoints.begin(), theXYZPoints.end(), [](auto a, auto b){return (a.Z() < b.Z());});
-
-                if (theXYZPoints.size())
-                {
-                    TVector3 dir((theXYZPoints.back().X() - theXYZPoints[0].X()), (theXYZPoints.back().Y() - theXYZPoints[0].Y()), (theXYZPoints.back().Z() - theXYZPoints[0].Z()));
-                    fTier0RecoStartDirectionX_SCE_corrected = dir.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = dir.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = dir.Unit().Z();
-                }
-
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }
-
-                if (theXYZPoints.size() > 1)
-                {
-                    TVector3 start_p1(theXYZPoints[0].X(), theXYZPoints[0].Y(), theXYZPoints[0].Z());
-                    TVector3 start_p2(theXYZPoints[1].X(), theXYZPoints[1].Y(), theXYZPoints[1].Z());
-                    TVector3 start_diff = start_p2 - start_p1;
-
-                    fTier0RecoStartDirectionX_SCE_corrected = start_diff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = start_diff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = start_diff.Unit().Z();
-                }
-
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }
-
-/*                if (theXYZPoints.size() > 2)
-                {
-                    std::vector<TVector3> input;
-                    for (size_t iP = 0; iP < 3; ++iP) 
-                    {
-                        input.push_back(TVector3(theXYZPoints[iP].X(), theXYZPoints[iP].Y(), theXYZPoints[iP].Z()));
-                    }
-
-                    TVector3 startDiff = FitLine(input);
-
-                    fTier0RecoStartDirectionX_SCE_corrected = startDiff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = startDiff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = startDiff.Unit().Z();
-                }
-                
-                else
-                {
-                    fTier0RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }*/
+                float temp_length = (projectedSpacePoints[i] - startPosition).Mag(); 
+//                std::cout << "temp length: " << temp_length << std::endl;
+                if(temp_length > counter_length)
+                    counter_length = temp_length;
             }
+           
+            fTier0SCERecoLength = counter_length; 
+//            std::cout << "final counter length: " << counter_length << std::endl;
+//            std::cout << "tier0 reco shower length: " << fTier0SCERecoLength << std::endl;
+//---------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
 //                    std::cout << "5" << std::endl;
         }
@@ -1226,7 +1421,8 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 fTier1TrueBeamParticleEndX       = trueParticle->EndX();
                 fTier1TrueBeamParticleEndY       = trueParticle->EndY();
                 fTier1TrueBeamParticleEndZ       = trueParticle->EndZ();
-                fTier1MCPDGCode    = trueParticle->PdgCode();
+                fTier1MCPDGCode                  = trueParticle->PdgCode();
+//                std::cout << "fTier1MCPDGCode: " << fTier1MCPDGCode << std::endl;
                 fTier1TrueBeamParticleStartX     = trueParticle->Position(0).X();
                 fTier1TrueBeamParticleStartY     = trueParticle->Position(0).Y();
                 fTier1TrueBeamParticleStartZ     = trueParticle->Position(0).Z();
@@ -1236,7 +1432,17 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 fTier1MCStartDirectionX          = (fTier1TrueBeamParticleStartPx)/(trueParticle->P());
                 fTier1MCStartDirectionY          = (fTier1TrueBeamParticleStartPy)/(trueParticle->P());
                 fTier1MCStartDirectionZ          = (fTier1TrueBeamParticleStartPz)/(trueParticle->P());
+//                std::cout << "tier1 true (TOTAL) length: " << fTier1TrueBeamParticleLength << std::endl;
 
+//fTier1MCStartVertexX
+                fTier1MCStartVertexX = fTier1TrueBeamParticleStartX;
+                fTier1MCStartVertexY = fTier1TrueBeamParticleStartY;
+                fTier1MCStartVertexZ = fTier1TrueBeamParticleStartZ;
+
+/*                std::cout << "fTier1TrueBeamParticleStartX: " << fTier1TrueBeamParticleStartX << std::endl;       
+                std::cout << "fTier1TrueBeamParticleStartY: " << fTier1TrueBeamParticleStartY << std::endl;                
+                std::cout << "fTier1TrueBeamParticleStartZ: " << fTier1TrueBeamParticleStartZ << std::endl;*/              
+         
     //            tier1beam_inst_X = trueParticle->Trajectory().X(trueParticle->Trajectory().size());
     //            tier1beam_inst_Y = trueParticle->Trajectory().Y(trueParticle->Trajectory().size());
     //            tier1beam_inst_Z = trueParticle->Trajectory().Z(trueParticle->Trajectory().size());
@@ -1260,11 +1466,151 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
                 fTier1MCLengthByTrajPoints = sqrt(((fTier1TrueBeamParticleEndX-fTier1TrueBeamParticleStartX)*(fTier1TrueBeamParticleEndX-fTier1TrueBeamParticleStartX)) + ((fTier1TrueBeamParticleEndY-fTier1TrueBeamParticleStartY)*(fTier1TrueBeamParticleEndY-fTier1TrueBeamParticleStartY)) + ((fTier1TrueBeamParticleEndZ-fTier1TrueBeamParticleStartZ)*(fTier1TrueBeamParticleEndZ-fTier1TrueBeamParticleStartZ)));
 
+//-------------------------------------------------------------------------------------------------------
+//A + dot(AP, AB) *AB
+                const simb::MCTrajectory & trueTier1Particle = trueParticle->Trajectory();
+                std::vector < TVector3 > trueParticleTraj;
+                std::vector < TVector3 > trueProjectedTrajPoints;
+                TVector3 trueStartPosition = {fTier1MCStartVertexX, fTier1MCStartVertexX, fTier1MCStartVertexX};
+                TVector3 trueStartDirection = {fTier1MCStartDirectionX,fTier1MCStartDirectionY, fTier1MCStartDirectionZ};
 
+                if((fTier1MCPDGCode == abs(11)) || (fTier1MCPDGCode == 22))
+                {
+                        std::vector < const simb::MCParticle*> tier1TrueParticles;
+                        std::vector < const simb::MCParticle*> tier1AllTrueEMParticles;
+                        tier1TrueParticles.push_back(trueParticle);
+//                        std::cout << "tier1TrueParticles: " << tier1TrueParticles.size() << std::endl;
+                        std::vector < const simb::MCParticle*> tier1TrueEMParticles = get_daughter_mc_em_particles(tier1TrueParticles);
+//                        std::cout << "tier1TrueEMParticles: " << tier1TrueEMParticles.size() << std::endl;
+                        
+                        int check = diff(tier1AllTrueEMParticles, tier1TrueEMParticles);
+//                        std::cout << "tier1AllTrueEMParticles before size: " << tier1AllTrueEMParticles.size() << std::endl;
+                        tier1AllTrueEMParticles = get_daughter_mc_em_particles(tier1TrueEMParticles);    
+//                        std::cout << "tier1AllTrueEMParticles middle size: " << tier1AllTrueEMParticles.size() << std::endl;                
+                        while (check != 0)
+                        {
+                            std::vector < const simb::MCParticle*> tier1AllTrueEMParticles_test = get_daughter_mc_em_particles(tier1AllTrueEMParticles);
+                            check = diff(tier1AllTrueEMParticles_test, tier1AllTrueEMParticles);
+//                            std::cout << "check: " << check << std::endl;
+                            if (check != 0)
+                            {
+                                tier1AllTrueEMParticles = tier1AllTrueEMParticles_test;
+                                tier1AllTrueEMParticles_test.empty();
+                            }
+                        }
+//                        std::cout << "tier1AllTrueEMParticles after size: " << tier1AllTrueEMParticles.size() << std::endl;
+                        int tier1Size = tier1AllTrueEMParticles.size();
+
+                        for(int i = 0; i < tier1Size; i++)
+                        {
+                            const simb::MCTrajectory & trueTier1EMParticle = tier1AllTrueEMParticles[i]->Trajectory();
+                            int temp_size = trueTier1EMParticle.size();
+                            for(int j = 0; j < temp_size; j++)
+                            {
+                                TVector3 temp_TVec = {trueTier1EMParticle.X(j), trueTier1EMParticle.Y(j), trueTier1EMParticle.Z(j)};
+                                trueParticleTraj.push_back(temp_TVec);
+                            }
+                        }
+
+                        int size2 = trueParticleTraj.size();
+
+                        for(int i = 0; i < size2; i++)
+                        {
+                            TVector3 temp_vec = {trueParticleTraj[i][0], trueParticleTraj[i][1], trueParticleTraj[i][2]};
+                            TVector3 AP = temp_vec - trueStartPosition;
+            //                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+            //                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                            TVector3 projectedPoint = trueStartPosition + (AP.Dot(trueStartDirection))*(trueStartDirection);
+                            trueProjectedTrajPoints.push_back(projectedPoint);
+                        } 
+
+                        int size3 = trueProjectedTrajPoints.size();
+
+                        float counter_length = 0;
+            //            std::cout << "init counter length: " << counter_length << std::endl;
+                        for (int i = 0; i < size3; i++)
+                        {
+                            float temp_length = (trueProjectedTrajPoints[i] - trueStartPosition).Mag(); 
+            //                std::cout << "temp length: " << temp_length << std::endl;
+                            if(temp_length > counter_length)
+                                counter_length = temp_length;
+                        }
+                       
+                        fTier1MCLength = counter_length;             
+//                        std::cout << "tier1 if true length: " << fTier1MCLength << std::endl;
+                }
+
+                else
+                {
+                    int size = trueTier1Particle.size();
+                    for (int i = 0; i < size; i++)
+                    {
+                        TVector3 temp_TVec = {trueTier1Particle.X(i), trueTier1Particle.Y(i), trueTier1Particle.Z(i)};
+                        trueParticleTraj.push_back(temp_TVec);
+                    }
+                    int size2 = trueParticleTraj.size();
+                    for(int i = 0; i < size2; i++)
+                    {
+                        TVector3 temp_vec = {trueParticleTraj[i][0], trueParticleTraj[i][1], trueParticleTraj[i][2]};
+                        TVector3 AP = temp_vec - trueStartPosition;
+        //                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+        //                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                        TVector3 projectedPoint = trueStartPosition + (AP.Dot(trueStartDirection))*(trueStartDirection);
+                        trueProjectedTrajPoints.push_back(projectedPoint);
+                    } 
+                    int size3 = trueProjectedTrajPoints.size();
+                    float counter_length = 0;
+        //            std::cout << "init counter length: " << counter_length << std::endl;
+                    for (int i = 0; i < size3; i++)
+                    {
+                        float temp_length = (trueProjectedTrajPoints[i] - trueStartPosition).Mag(); 
+        //                std::cout << "temp length: " << temp_length << std::endl;
+                        if(temp_length > counter_length)
+                            counter_length = temp_length;
+                    }
+                   
+                    fTier1MCLength = counter_length;             
+//                    std::cout << "tier1 else true length: " << fTier1MCLength << std::endl;
+                }
+        //get_daughter_mc_em_particles(std::vector<const simb::MCParticle*>
+
+
+        
+//-------------------------------------------------------------------------------------------------------
 
 
 //        fTier0MCLengthByTrajPoints = sqrt(((fTier0MCInteractionVertexX-fTier0MCStartVertexX)*(fTier0MCInteractionVertexX-fTier0MCStartVertexX)) + ((fTier0MCInteractionVertexY-fTier0MCStartVertexY)*(fTier0MCInteractionVertexY-fTier0MCStartVertexY)) + ((fTier0MCInteractionVertexZ-fTier0MCStartVertexZ)*(fTier0MCInteractionVertexZ-fTier0MCStartVertexZ)));
     //--------------------------------reco tier 1 quantities--------------------------------------------------------------------------
+
+                auto spacePoints = fProtoDUNEPFParticleUtils.GetPFParticleSpacePoints(*recoParticle, e, fPFParticleLabel);
+                std::vector< std::vector <double> > sceSpacePoints;
+                int k = spacePoints.size();
+        /*        std::cout << "spacePoints size: " << k << std::endl;
+
+                std::cout << "front spacepoint x: " << spacePoints.front()->XYZ()[0] << std::endl;
+                std::cout << "front spacepoint y: " << spacePoints.front()->XYZ()[1] << std::endl;
+                std::cout << "front spacepoint z: " << spacePoints.front()->XYZ()[2] << std::endl;
+
+                std::cout << "back spacepoint x: " << spacePoints.back()->XYZ()[0] << std::endl;
+                std::cout << "back spacepoint y: " << spacePoints.back()->XYZ()[1] << std::endl;
+                std::cout << "back spacepoint z: " << spacePoints.back()->XYZ()[2] << std::endl;*/
+
+                for (int i = 0; i < k; i++)
+                {
+                    double temp_x = spacePoints[i]->XYZ()[0]+SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+                    double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+                    double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+                    std::vector <double> temp_vec = {temp_x, temp_y, temp_z};
+                    sceSpacePoints.push_back(temp_vec);
+                }
+
+        /*        std::sort(sceSpacePoints.begin(), sceSpacePoints.end(), [] ( const std::vector<int>& v1, const std::vector<int>& v2 )->bool
+                {
+                    return v1[2] < v2[2];
+                });*/
+
+                int sceSpacePointSize = sceSpacePoints.size();
+
                 fTier1Purity = fProtoDUNETruthUtils.GetPurity(clockData, *recoParticle, e, fPFParticleLabel);
                 fTier1Completeness = fProtoDUNETruthUtils.GetCompleteness(clockData, *recoParticle, e, "pandora", "hitpdune");
                 
@@ -1273,6 +1619,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
                 if(thisTrack != 0x0)
                 {
+                    fTier1RecoID = 1;
                     fTier1Reco_beam_pfp_topology = 1;
                     fTier1RecoLength = thisTrack->Length();
                     auto calo = fProtoDUNETrackUtils.GetRecoTrackCalorimetry(*thisTrack, e, fTrackLabel, fCalorimetryTagSCE);
@@ -1286,94 +1633,96 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                     fTier1RecoStartVertexY_SCE_corrected = fTier1RecoBeamParticleStartY-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Y();
                     fTier1RecoStartVertexZ_SCE_corrected = fTier1RecoBeamParticleStartZ-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Z();
 
+//                    std::cout << "fTier1RecoStartVertexX_SCE_corrected: " << fTier1RecoStartVertexX_SCE_corrected << std::endl;
+//                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
+//                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
+     
                     const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel);
 
                     fTier1RecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
                     fTier1RecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
                     fTier1RecoBeamParticleInteractionZ = reco_primary_interaction_vertex.Z();
 
-//                    fTier1RecoBeamStartDirX = (thisTrack->StartDirection()).X();
-//                    fTier1RecoBeamStartDirY = (thisTrack->StartDirection()).Y();
-//                    fTier1RecoBeamStartDirZ = (thisTrack->StartDirection()).Z();
+                    fTier1RecoBeamStartDirX = (thisTrack->StartDirection()).X();
+                    fTier1RecoBeamStartDirY = (thisTrack->StartDirection()).Y();
+                    fTier1RecoBeamStartDirZ = (thisTrack->StartDirection()).Z();
 //-------------------------------------------------------------------------------------------------------------------
+                    float tier1_reco_start_dir_x = fTier1RecoBeamStartDirX;
+                    float tier1_reco_start_dir_y = fTier1RecoBeamStartDirY;
+                    float tier1_reco_start_dir_z = fTier1RecoBeamStartDirZ;
 
-            bool found_calo = false;
-            size_t index = 0;
-            for ( index = 0; index < calo.size(); ++index)
-            {
-                if (calo[index].PlaneID().Plane == 2)
-                {
-                    found_calo = true;
-                    break; 
-                }
-            }
+                    float tier1_reco_length = fTier1RecoLength;
 
-            if (found_calo)
-            {
-                auto theXYZPoints = calo[index].XYZ();
-                std::sort(theXYZPoints.begin(), theXYZPoints.end(), [](auto a, auto b){return (a.Z() < b.Z());});
+                    float tier1_reco_start_x = fTier1RecoBeamParticleStartX;
+                    float tier1_reco_start_y = fTier1RecoBeamParticleStartY;
+                    float tier1_reco_start_z = fTier1RecoBeamParticleStartZ;
 
-                if (theXYZPoints.size())
-                {
-                    TVector3 dir((theXYZPoints.back().X() - theXYZPoints[0].X()), (theXYZPoints.back().Y() - theXYZPoints[0].Y()), (theXYZPoints.back().Z() - theXYZPoints[0].Z()));
-                    fTier1RecoStartDirectionX_SCE_corrected = dir.Unit().X();
-                    fTier1RecoStartDirectionY_SCE_corrected = dir.Unit().Y();
-                    fTier1RecoStartDirectionZ_SCE_corrected = dir.Unit().Z();
-                }
+                    float tier1_reco_end_dir_x = tier1_reco_start_x + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_x);
+                    float tier1_reco_end_dir_y = tier1_reco_start_y + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_y);
+                    float tier1_reco_end_dir_z = tier1_reco_start_z + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_z);
 
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionZ_SCE_corrected = -9999;
-                }
+                    float tier1_reco_end_dir_x_SCE_corrected = tier1_reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).X();
+                    float tier1_reco_end_dir_y_SCE_corrected = tier1_reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Y();
+                    float tier1_reco_end_dir_z_SCE_corrected = tier1_reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Z();
 
-                if (theXYZPoints.size() > 1)
-                {
-                    TVector3 start_p1(theXYZPoints[0].X(), theXYZPoints[0].Y(), theXYZPoints[0].Z());
-                    TVector3 start_p2(theXYZPoints[1].X(), theXYZPoints[1].Y(), theXYZPoints[1].Z());
-                    TVector3 start_diff = start_p2 - start_p1;
+                    float tier1_startdirX_SCE_corrected = tier1_reco_end_dir_x_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
 
-                    fTier1RecoStartDirectionX_SCE_corrected = start_diff.Unit().X();
-                    fTier1RecoStartDirectionY_SCE_corrected = start_diff.Unit().Y();
-                    fTier1RecoStartDirectionZ_SCE_corrected = start_diff.Unit().Z();
-                }
+                    float tier1_reco_mag = sqrt(((tier1_startdirX_SCE_corrected)*(tier1_startdirX_SCE_corrected)) + ((tier1_startdirY_SCE_corrected)*(tier1_startdirY_SCE_corrected)) + ((tier1_startdirZ_SCE_corrected)*(tier1_startdirZ_SCE_corrected)));
 
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionZ_SCE_corrected = -9999;
-                }
+                    fTier1RecoStartDirectionX_SCE_corrected = tier1_startdirX_SCE_corrected/tier1_reco_mag;
+                    fTier1RecoStartDirectionY_SCE_corrected = tier1_startdirY_SCE_corrected/tier1_reco_mag;
+                    fTier1RecoStartDirectionZ_SCE_corrected = tier1_startdirZ_SCE_corrected/tier1_reco_mag;
 
-/*                if (theXYZPoints.size() > 2)
-                {
-                    std::vector<TVector3> input;
-                    for (size_t iP = 0; iP < 3; ++iP) 
+//-----------------------------------------------------------------------------------------            
+        /*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
+                    std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
+                    std::cout << "recoDirection z: " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
+
+                    std::vector < TVector3 > projectedSpacePoints;
+                    TVector3 recoDirection = {fTier1RecoStartDirectionX_SCE_corrected, fTier1RecoStartDirectionY_SCE_corrected, fTier1RecoStartDirectionZ_SCE_corrected}; 
+
+        //            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
+
+        //A + dot(AP, AB) *AB
+                    TVector3 startPosition = {fTier1RecoStartVertexX_SCE_corrected,fTier1RecoStartVertexY_SCE_corrected,fTier1RecoStartVertexZ_SCE_corrected};
+
+        /*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
+                    std::cout << "startPosition y: " << startPosition.Y() << std::endl;
+                    std::cout << "startPosition z: " << startPosition.Z() << std::endl;
+                    std::cout << "startPosition mag: " << startPosition.Mag() << std::endl;*/
+
+                    for(int i = 0; i < sceSpacePointSize; i++)
                     {
-                        input.push_back(TVector3(theXYZPoints[iP].X(), theXYZPoints[iP].Y(), theXYZPoints[iP].Z()));
+                        TVector3 temp_vec = {sceSpacePoints[i][0], sceSpacePoints[i][1], sceSpacePoints[i][2]};
+                        TVector3 AP = temp_vec - startPosition;
+        //                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+        //                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                        TVector3 projectedPoint = startPosition + (AP.Dot(recoDirection))*(recoDirection);
+                        projectedSpacePoints.push_back(projectedPoint);
+                    } 
+                    
+                    float counter_length = 0;
+        //            std::cout << "init counter length: " << counter_length << std::endl;
+                    for (int i = 0; i < sceSpacePointSize; i++)
+                    {
+                        float temp_length = (projectedSpacePoints[i] - startPosition).Mag(); 
+        //                std::cout << "temp length: " << temp_length << std::endl;
+                        if(temp_length > counter_length)
+                            counter_length = temp_length;
                     }
-
-                    TVector3 startDiff = FitLine(input);
-
-                    fTier1RecoStartDirectionX_SCE_corrected = startDiff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = startDiff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = startDiff.Unit().Z();
-                }
-                
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }*/
-            }
+                   
+                    fTier1SCERecoLength = counter_length; 
+//                    std::cout << "final tier1 track counter length: " << counter_length << std::endl;
+//---------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
 
                 }
 
                 if(thisShower != 0x0) 
                 {
+                    fTier1RecoID = 0;
                     fTier1Reco_beam_pfp_topology = 0;
                     fTier1RecoLength = thisShower->Length();
                     auto calo = fProtoDUNEShowerUtils.GetRecoShowerCalorimetry(*thisShower, e, fShowerLabel, fCalorimetryTagSCE);
@@ -1387,83 +1736,84 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                     fTier1RecoStartVertexY_SCE_corrected = fTier1RecoBeamParticleStartY-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Y();
                     fTier1RecoStartVertexZ_SCE_corrected = fTier1RecoBeamParticleStartZ-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Z();
 
+
+//                    std::cout << "fTier1RecoStartVertexX_SCE_corrected: " << fTier1RecoStartVertexX_SCE_corrected << std::endl;
+//                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
+//                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
+
 //                    fTier1RecoBeamStartDirX = (thisShower->Direction()).X();
 //                    fTier1RecoBeamStartDirY = (thisShower->Direction()).Y();
 //                    fTier1RecoBeamStartDirZ = (thisShower->Direction()).Z();
 
 //-------------------------------------------------------------------------------------------------------------------
+                    float tier1_reco_start_dir_x = fTier1RecoBeamStartDirX;
+                    float tier1_reco_start_dir_y = fTier1RecoBeamStartDirY;
+                    float tier1_reco_start_dir_z = fTier1RecoBeamStartDirZ;
 
-            bool found_calo = false;
-            size_t index = 0;
-            for ( index = 0; index < calo.size(); ++index)
-            {
-                if (calo[index].PlaneID().Plane == 2)
-                {
-                    found_calo = true;
-                    break; 
-                }
-            }
+                    float tier1_reco_length = fTier1RecoLength;
 
-            if (found_calo)
-            {
-                auto theXYZPoints = calo[index].XYZ();
-                std::sort(theXYZPoints.begin(), theXYZPoints.end(), [](auto a, auto b){return (a.Z() < b.Z());});
+                    float tier1_reco_start_x = fTier1RecoBeamParticleStartX;
+                    float tier1_reco_start_y = fTier1RecoBeamParticleStartY;
+                    float tier1_reco_start_z = fTier1RecoBeamParticleStartZ;
 
-                if (theXYZPoints.size())
-                {
-                    TVector3 dir((theXYZPoints.back().X() - theXYZPoints[0].X()), (theXYZPoints.back().Y() - theXYZPoints[0].Y()), (theXYZPoints.back().Z() - theXYZPoints[0].Z()));
-                    fTier1RecoStartDirectionX_SCE_corrected = dir.Unit().X();
-                    fTier1RecoStartDirectionY_SCE_corrected = dir.Unit().Y();
-                    fTier1RecoStartDirectionZ_SCE_corrected = dir.Unit().Z();
-                }
+                    float tier1_reco_end_dir_x = tier1_reco_start_x + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_x);
+                    float tier1_reco_end_dir_y = tier1_reco_start_y + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_y);
+                    float tier1_reco_end_dir_z = tier1_reco_start_z + (0.2)*(tier1_reco_length)*(tier1_reco_start_dir_z);
 
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionZ_SCE_corrected = -9999;
-                }
+                    float tier1_reco_end_dir_x_SCE_corrected = tier1_reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).X();
+                    float tier1_reco_end_dir_y_SCE_corrected = tier1_reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Y();
+                    float tier1_reco_end_dir_z_SCE_corrected = tier1_reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Z();
 
-                if (theXYZPoints.size() > 1)
-                {
-                    TVector3 start_p1(theXYZPoints[0].X(), theXYZPoints[0].Y(), theXYZPoints[0].Z());
-                    TVector3 start_p2(theXYZPoints[1].X(), theXYZPoints[1].Y(), theXYZPoints[1].Z());
-                    TVector3 start_diff = start_p2 - start_p1;
+                    float tier1_startdirX_SCE_corrected = tier1_reco_end_dir_x_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
 
-                    fTier1RecoStartDirectionX_SCE_corrected = start_diff.Unit().X();
-                    fTier1RecoStartDirectionY_SCE_corrected = start_diff.Unit().Y();
-                    fTier1RecoStartDirectionZ_SCE_corrected = start_diff.Unit().Z();
-                }
+                    float tier1_reco_mag = sqrt(((tier1_startdirX_SCE_corrected)*(tier1_startdirX_SCE_corrected)) + ((tier1_startdirY_SCE_corrected)*(tier1_startdirY_SCE_corrected)) + ((tier1_startdirZ_SCE_corrected)*(tier1_startdirZ_SCE_corrected)));
 
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier1RecoStartDirectionZ_SCE_corrected = -9999;
-                }
+                    fTier1RecoStartDirectionX_SCE_corrected = tier1_startdirX_SCE_corrected/tier1_reco_mag;
+                    fTier1RecoStartDirectionY_SCE_corrected = tier1_startdirY_SCE_corrected/tier1_reco_mag;
+                    fTier1RecoStartDirectionZ_SCE_corrected = tier1_startdirZ_SCE_corrected/tier1_reco_mag;
+//-----------------------------------------------------------------------------------------            
+        /*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
+                    std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
+                    std::cout << "recoDirection z: " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
 
-/*                if (theXYZPoints.size() > 2)
-                {
-                    std::vector<TVector3> input;
-                    for (size_t iP = 0; iP < 3; ++iP) 
+                    std::vector < TVector3 > projectedSpacePoints;
+                    TVector3 recoDirection = {fTier1RecoStartDirectionX_SCE_corrected, fTier1RecoStartDirectionY_SCE_corrected, fTier1RecoStartDirectionZ_SCE_corrected}; 
+
+        //            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
+
+        //A + dot(AP, AB) *AB
+                    TVector3 startPosition = {fTier1RecoStartVertexX_SCE_corrected,fTier1RecoStartVertexY_SCE_corrected,fTier1RecoStartVertexZ_SCE_corrected};
+
+        /*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
+                    std::cout << "startPosition y: " << startPosition.Y() << std::endl;
+                    std::cout << "startPosition z: " << startPosition.Z() << std::endl;
+                    std::cout << "startPosition mag: " << startPosition.Mag() << std::endl;*/
+
+                    for(int i = 0; i < sceSpacePointSize; i++)
                     {
-                        input.push_back(TVector3(theXYZPoints[iP].X(), theXYZPoints[iP].Y(), theXYZPoints[iP].Z()));
+                        TVector3 temp_vec = {sceSpacePoints[i][0], sceSpacePoints[i][1], sceSpacePoints[i][2]};
+                        TVector3 AP = temp_vec - startPosition;
+        //                std::cout << "AP.X: " << AP.X() << ", AP.Y: " << AP.Y() << ", AP.Z: " << AP.Z() << std::endl;
+        //                std::cout << "AP.recoDirection: " << AP.Dot(recoDirection) << std::endl;
+                        TVector3 projectedPoint = startPosition + (AP.Dot(recoDirection))*(recoDirection);
+                        projectedSpacePoints.push_back(projectedPoint);
+                    } 
+                    
+                    float counter_length = 0;
+        //            std::cout << "init counter length: " << counter_length << std::endl;
+                    for (int i = 0; i < sceSpacePointSize; i++)
+                    {
+                        float temp_length = (projectedSpacePoints[i] - startPosition).Mag(); 
+        //                std::cout << "temp length: " << temp_length << std::endl;
+                        if(temp_length > counter_length)
+                            counter_length = temp_length;
                     }
-
-                    TVector3 startDiff = FitLine(input);
-
-                    fTier1RecoStartDirectionX_SCE_corrected = startDiff.Unit().X();
-                    fTier0RecoStartDirectionY_SCE_corrected = startDiff.Unit().Y();
-                    fTier0RecoStartDirectionZ_SCE_corrected = startDiff.Unit().Z();
-                }
-                
-                else
-                {
-                    fTier1RecoStartDirectionX_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionY_SCE_corrected = -9999;
-                    fTier0RecoStartDirectionZ_SCE_corrected = -9999;
-                }*/
-            }
+                   
+                    fTier1SCERecoLength = counter_length; 
+//                    std::cout << "final tier1 shower counter length: " << counter_length << std::endl;
+//---------------------------------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------
 
                 }
@@ -1524,7 +1874,13 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("fTier0RecoLength",&fTier0RecoLength,"fTier0RecoLength/F");//
     fTree->Branch("fTier0MCParticleHitsSize",&fTier0MCParticleHitsSize,"fTier0MCParticleHitsSize/I");//
     fTree->Branch("fTier0RecoMCParticleMatch",&fTier0RecoMCParticleMatch,"fTier0RecoMCParticleMatch/I");//
-
+    fTree->Branch("fDoesMCBeamParticleExist",&fDoesMCBeamParticleExist,"fDoesMCBeamParticleExist/I");
+    fTree->Branch("fDoesRecoBeamParticleExist",&fDoesRecoBeamParticleExist,"DoesRecoBeamParticleExist/I");
+    fTree->Branch("fDoesMCRecoMatch",&fDoesMCRecoMatch,"fDoesMCRecoMatch/I");
+    fTree->Branch("fTier0RecoID",&fTier0RecoID,"fTier0RecoID/I");
+    fTestTree->Branch("fTier0MCLength",&fTier0MCLength,"fTier0MCLength/F");
+    fTree->Branch("fTier0SCERecoLength",&fTier0SCERecoLength,"fTier0SCERecoLength/F");
+    fTree->Branch("fTrueBeamLengthVersion3",&fTrueBeamLengthVersion3,"fTrueBeamLengthVersion3/F");
 //    fTree->Branch("doesTrueBeamParticleExist",&fDoesTrueBeamParticleExist,"doesTrueBeamParticleExist/I");
 //    fTree->Branch("trueBeamParticleStartX",&fTrueBeamParticleStartX,"trueBeamParticleStartX/F");
 //    fTree->Branch("trueBeamParticleStartY",&fTrueBeamParticleStartY,"trueBeamParticleStartY/F");
@@ -1596,6 +1952,9 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTestTree->Branch("fTier1MCPDGCode",&fTier1MCPDGCode,"fTier1MCPDGCode/I");//
     fTestTree->Branch("tier1Completeness",&fTier1Completeness,"tier1Completeness/F");//
     fTestTree->Branch("tier1Purity",&fTier1Purity,"tier1Purity/F");//
+    fTestTree->Branch("fTier1MCStartVertexX",&fTier1MCStartVertexX,"fTier1MCStartVertexX/F");
+    fTestTree->Branch("fTier1MCStartVertexY",&fTier1MCStartVertexY,"fTier1MCStartVertexY/F");
+    fTestTree->Branch("fTier1MCStartVertexZ",&fTier1MCStartVertexZ,"fTier1MCStartVertexZ/F");
     fTestTree->Branch("fTier1RecoStartVertexX_SCE_corrected",&fTier1RecoStartVertexX_SCE_corrected,"fTier1RecoStartVertexX_SCE_corrected/F");
     fTestTree->Branch("fTier1RecoStartVertexY_SCE_corrected",&fTier1RecoStartVertexY_SCE_corrected,"fTier1RecoStartVertexY_SCE_corrected/F");
     fTestTree->Branch("fTier1RecoStartVertexZ_SCE_corrected",&fTier1RecoStartVertexZ_SCE_corrected,"fTier1RecoStartVertexZ_SCE_corrected/F");
@@ -1610,6 +1969,10 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTestTree->Branch("fTier1RecoLength",&fTier1RecoLength,"fTier1RecoLength/F");//
     fTestTree->Branch("fTier1MCParticleHitsSize",&fTier1MCParticleHitsSize,"fTier1MCParticleHitsSize/I");//
     fTestTree->Branch("fTier1RecoMCParticleMatch",&fTier1RecoMCParticleMatch,"fTier1RecoMCParticleMatch/I");//
+    fTestTree->Branch("fTier1RecoID",&fTier1RecoID,"fTier1RecoID/I");
+    fTestTree->Branch("fTier1MCLength",&fTier1MCLength,"fTier1MCLength/F");
+    fTestTree->Branch("fTier1SCERecoLength",&fTier1SCERecoLength,"fTier1SCERecoLength/F");
+    fTestTree->Branch("fTier1TrueBeamParticleLength",&fTier1TrueBeamParticleLength,"fTier1TrueBeamParticleLength/F");//
 
 //    fTestTree->Branch("tier1beamInst_startVertex_X_SCE_corrected",&fTier1BeamInst_startVertex_X_SCE_corrected,"tier1beamInst_startVertex_X_SCE_corrected/F");//
 //    fTestTree->Branch("tier1beamInst_startVertex_Y_SCE_corrected",&fTier1BeamInst_startVertex_Y_SCE_corrected,"tier1beamInst_startVertex_Y_SCE_corrected/F");//
@@ -1631,7 +1994,7 @@ void analysis::PDSPKaonAnalysis::beginJob()
 //    fTestTree->Branch("fTier1MCParticleNumber",&fTier1MCParticleNumber,"fTier1MCParticleNumber/I");//
 //    fTestTree->Branch("fTier1RecoParticleNumber",&fTier1RecoParticleNumber,"fTier1RecoParticleNumber/I");//
 //    fTestTree->Branch("fTier1MCRecoMatchedNumber",&fTier1MCRecoMatchedNumber,"fTier1MCRecoMatchedNumber/I");//
-//    fTestTree->Branch("fTier1TrueBeamParticleLength",&fTier1TrueBeamParticleLength,"fTier1TrueBeamParticleLength/F");//
+
  //   fTestTree->Branch("fTier1TrueBeamParticleInteractionX",&fTier1TrueBeamParticleInteractionX,"fTier1TrueBeamParticleInteractionX/F");//
 ////    fTestTree->Branch("fTier1TrueBeamParticleInteractionY",&fTier1TrueBeamParticleInteractionY,"fTier1TrueBeamParticleInteractionY/F");//fix
 //    fTestTree->Branch("fTier1TrueBeamParticleInteractionZ",&fTier1TrueBeamParticleInteractionZ,"fTier1TrueBeamParticleInteractionZ/F");//fix
@@ -1640,7 +2003,7 @@ void analysis::PDSPKaonAnalysis::beginJob()
 //    fTestTree->Branch("fTier1TrueBeamParticlePDGCode",&fTier1TrueBeamParticlePDGCode,"fTier1TrueBeamParticlePDGCode/I");//
 //    fTestTree->Branch("fStartVertexDr",&fStartVertexDr,"fStartVertexDr/F");
 //
-//    fTestTree->Branch("fTrueBeamLengthVersion3",&fTrueBeamLengthVersion3,"fTrueBeamLengthVersion3/F");
+
 //
 //    fTestTree->Branch("fMCRecoMatchedHits",&fMCRecoMatchedHits,"fMCRecoMatchedHits/I");
 
@@ -1689,6 +2052,31 @@ std::vector<const simb::MCParticle*> analysis::PDSPKaonAnalysis::apply_true_part
 
 }
 
+std::vector<const simb::MCParticle*> analysis::PDSPKaonAnalysis::get_daughter_mc_em_particles(std::vector<const simb::MCParticle*> inputVector)
+{
+    int size = inputVector.size();
+    std::vector<const simb::MCParticle*> outputVector;
+    const sim::ParticleList & plist = pi_serv->ParticleList();
+    
+    for (int i = 0; i < size; i++)
+    {
+        int number_true_daughters = inputVector[i]->NumberDaughters();
+        for (int j = 0; j < number_true_daughters; j++)
+        {
+            auto daughter =  plist[ inputVector[i]->Daughter(j)];
+            outputVector.push_back(daughter);
+        }
+
+    }
+
+    return outputVector;
+}
+
+int analysis::PDSPKaonAnalysis::diff(std::vector<const simb::MCParticle*> inputVector_1, std::vector<const simb::MCParticle*> inputVector_2)
+{
+    return inputVector_1.size() - inputVector_2.size();
+}
+
 int analysis::PDSPKaonAnalysis::count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector)
 {
 //    std::cout << "testing count_unwanted_particles function" << std::endl;
@@ -1707,8 +2095,9 @@ int analysis::PDSPKaonAnalysis::count_unwanted_particles(std::vector<const simb:
     return count;
 }
 
-/*void analysis::PDSPKaonAnalysis::line(double t, double *p,
-                                 double &x, double &y, double &z) {
+/*void line(double t, double *p,
+                                 double &x, double &y, double &z) 
+{
    // a parameteric line is define from 6 parameters but 4 are independent
    // x0,y0,z0,z1,y1,z1 which are the coordinates of two points on the line
    // can choose z0 = 0 if line not parallel to x-y plane and z1 = 1;
@@ -1717,7 +2106,8 @@ int analysis::PDSPKaonAnalysis::count_unwanted_particles(std::vector<const simb:
    z = t;
 }
 
-double analysis::PDSPKaonAnalysis::distance2(double x,double y,double z, double *p) {
+double distance2(double x,double y,double z, double *p) 
+{
    // distance line point is D= | (xp-x0) cross  ux |
    // where ux is direction of line and x0 is a point in the line (like t = 0)
    ROOT::Math::XYZVector xp(x,y,z);
@@ -1729,7 +2119,8 @@ double analysis::PDSPKaonAnalysis::distance2(double x,double y,double z, double 
 }
 
 
-void analysis::PDSPKaonAnalysis::SumDistance2(int &, double *, double & sum, double * par, int) {
+void SumDistance2(int &, double *, double & sum, double * par, int) 
+{
    // the TGraph must be a global variable
    TGraph2D * gr = dynamic_cast<TGraph2D*>( (TVirtualFitter::GetFitter())->GetObjectFit() );
    assert(gr != 0);
