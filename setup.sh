@@ -1,4 +1,6 @@
 source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+unsetup mrb
+setup mrb v4_04_06
 source /storage/epp2/phrwdg/Dune/protoduneana/localProducts_larsoft_v09_12_00_e19_prof/setup
 setup protoduneana v09_12_00 -q e19:prof
 mrbsetenv
