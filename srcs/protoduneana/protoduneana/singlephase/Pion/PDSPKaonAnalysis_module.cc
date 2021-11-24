@@ -150,6 +150,9 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   int fTier0NoTrackDaughters;
   int fTier0NoShowerDaughters;
 
+  int fTier0NoTrackDaughtersWithCuts;
+  int fTier0NoShowerDaughtersWithCuts;
+
   float fRecoBeamParticleStartX;
   float fRecoBeamParticleStartY;
   float fRecoBeamParticleStartZ;
@@ -478,6 +481,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
     fTier0NoTrackDaughters                      = -1;
     fTier0NoShowerDaughters                     = -1;
+    
+    fTier0NoTrackDaughtersWithCuts              = -1;
+    fTier0NoShowerDaughtersWithCuts             = -1;
 //------------------------------Tier 1--------------------------------------
     fTier1TrueBeamParticleEnergy                     = -9999.;
     fTier1TrueBeamParticlePDGCode                    = -9999;
@@ -913,8 +919,8 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         for (int i = 0; i < k; i++)
         {
             double temp_x = spacePoints[i]->XYZ()[0]+SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
-            double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
-            double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+            double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).Y();
+            double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).Z();
             std::vector <double> temp_vec = {temp_x, temp_y, temp_z};
             sceSpacePoints.push_back(temp_vec);
         }
@@ -994,30 +1000,56 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             float reco_start_dir_x = fRecoBeamStartDirX;
             float reco_start_dir_y = fRecoBeamStartDirY;
             float reco_start_dir_z = fRecoBeamStartDirZ;
-
+            
+            /*std::cout << "==============================================" << std::endl;
+            std::cout << "TIER 0 reco_start_dir_x : " << reco_start_dir_x << std::endl;
+            std::cout << "TIER 0 reco_start_dir_y : " << reco_start_dir_y << std::endl;
+            std::cout << "TIER 0 reco_start_dir_z : " << reco_start_dir_z << std::endl;*/
 //            float reco_length = fTier0RecoLengthFromRecob;
 
             float reco_start_x = fRecoBeamParticleStartX;
             float reco_start_y = fRecoBeamParticleStartY;
             float reco_start_z = fRecoBeamParticleStartZ;
 
+            /*std::cout << "TIER 0 reco_start_x : " << reco_start_x << std::endl;
+            std::cout << "TIER 0 reco_start_y : " << reco_start_y << std::endl;
+            std::cout << "TIER 0 reco_start_z : " << reco_start_z << std::endl;*/
+
             float reco_end_dir_x = reco_start_x + (2)*(reco_start_dir_x);
             float reco_end_dir_y = reco_start_y + (2)*(reco_start_dir_y);
             float reco_end_dir_z = reco_start_z + (2)*(reco_start_dir_z);
+
+            /*std::cout << "TIER 0 reco_end_dir_x : " << reco_end_dir_x << std::endl;
+            std::cout << "TIER 0 reco_end_dir_y : " << reco_end_dir_y << std::endl;
+            std::cout << "TIER 0 reco_end_dir_z : " << reco_end_dir_z << std::endl;*/
 
             float reco_end_dir_x_SCE_corrected = reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).X();
             float reco_end_dir_y_SCE_corrected = reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Y();
             float reco_end_dir_z_SCE_corrected = reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(reco_end_dir_x,reco_end_dir_y,reco_end_dir_z)).Z();
 
+            /*std::cout << "TIER 0 reco_end_dir_x_SCE_corrected : " << reco_end_dir_x_SCE_corrected << std::endl;
+            std::cout << "TIER 0 reco_end_dir_y_SCE_corrected : " << reco_end_dir_y_SCE_corrected << std::endl;
+            std::cout << "TIER 0 reco_end_dir_z_SCE_corrected : " << reco_end_dir_z_SCE_corrected << std::endl;*/
+
             float startdirX_SCE_corrected = reco_end_dir_x_SCE_corrected - fTier0RecoStartVertexX_SCE_corrected;
             float startdirY_SCE_corrected = reco_end_dir_y_SCE_corrected - fTier0RecoStartVertexY_SCE_corrected;
-            float startdirZ_SCE_corrected = reco_end_dir_z_SCE_corrected - fTier0RecoStartVertexX_SCE_corrected;
+            float startdirZ_SCE_corrected = reco_end_dir_z_SCE_corrected - fTier0RecoStartVertexZ_SCE_corrected;
+
+            /*std::cout << "TIER 0 startdirX_SCE_corrected : " << startdirX_SCE_corrected << std::endl;
+            std::cout << "TIER 0 startdirY_SCE_corrected : " << startdirY_SCE_corrected << std::endl;
+            std::cout << "TIER 0 startdirZ_SCE_corrected : " << startdirZ_SCE_corrected << std::endl;*/
 
             float reco_mag = sqrt(((startdirX_SCE_corrected)*(startdirX_SCE_corrected)) + ((startdirY_SCE_corrected)*(startdirY_SCE_corrected)) + ((startdirZ_SCE_corrected)*(startdirZ_SCE_corrected)));
+
+            //std::cout << "TIER 0 reco_mag : " << reco_mag << std::endl;
 
             fTier0RecoStartDirectionX_SCE_corrected = startdirX_SCE_corrected/reco_mag;
             fTier0RecoStartDirectionY_SCE_corrected = startdirY_SCE_corrected/reco_mag;
             fTier0RecoStartDirectionZ_SCE_corrected = startdirZ_SCE_corrected/reco_mag;
+
+            /*std::cout << "TIER 0 fTier0RecoStartDirectionX_SCE_corrected : " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
+            std::cout << "TIER 0 fTier0RecoStartDirectionY_SCE_corrected : " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
+            std::cout << "TIER 0 fTier0RecoStartDirectionZ_SCE_corrected : " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
 //-----------------------------------------------------------------------------------------            
 /*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
             std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
@@ -1193,7 +1225,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         std::cout << "fRecoBeamParticleNhits: " << fRecoBeamParticleNhits << std::endl; 
         std::cout << "-------------------------------------------------------------------------------------------- " << std::endl; */
     }
-    fTree->Fill();
+    //fTree->Fill();
 
     if (fTier0RecoMCParticleMatch == 1)
     {
@@ -1439,6 +1471,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         int matched_row = finalMatchedMatrix.size();
         fTier1MCRecoMatchedNumber = matched_row;
     //        std::cout << "matched_row size: " << matched_row << std::endl;
+
+        int counter_track = 0;
+        int counter_shower = 0;
         for (int i = 0; i < matched_row; i++) //todo check matched_row
         {
             if (finalMatchedMatrix[i][3] == 1)
@@ -1468,6 +1503,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 fTier1MCStartDirectionZ          = (fTier1TrueBeamParticleStartPz)/(trueParticle->P());
 //                std::cout << "tier1 true (TOTAL) length: " << fTier1TrueBeamParticleLength << std::endl;
 
+                /*std::cout << "fTier1MCStartDirectionX: " << fTier1MCStartDirectionX << std::endl;
+                std::cout << "fTier1MCStartDirectionY: " << fTier1MCStartDirectionY << std::endl;
+                std::cout << "fTier1MCStartDirectionZ: " << fTier1MCStartDirectionZ << std::endl;*/
 //fTier1MCStartVertexX
                 fTier1MCStartVertexX = fTier1TrueBeamParticleStartX;
                 fTier1MCStartVertexY = fTier1TrueBeamParticleStartY;
@@ -1632,8 +1670,8 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 for (int i = 0; i < k; i++)
                 {
                     double temp_x = spacePoints[i]->XYZ()[0]+SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
-                    double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
-                    double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).X();
+                    double temp_y = spacePoints[i]->XYZ()[1]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).Y();
+                    double temp_z = spacePoints[i]->XYZ()[2]-SCE->GetPosOffsets(geo::Point_t(spacePoints[i]->XYZ()[0],spacePoints[i]->XYZ()[1],spacePoints[i]->XYZ()[2])).Z();
                     std::vector <double> temp_vec = {temp_x, temp_y, temp_z};
                     sceSpacePoints.push_back(temp_vec);
                 }
@@ -1655,22 +1693,32 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 {
                     fTier1RecoID = 1;
                     fTier1Reco_beam_pfp_topology = 1;
+                    ++counter_track;
                     fTier1RecoLengthByRecob = thisTrack->Length();
 //                    auto calo = fProtoDUNETrackUtils.GetRecoTrackCalorimetry(*thisTrack, e, fTrackLabel, fCalorimetryTagSCE);
-                    const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel);
+                    const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel); //to change vertex
 
                     fTier1RecoBeamParticleStartX = reco_primary_start_vertex.X();
                     fTier1RecoBeamParticleStartY = reco_primary_start_vertex.Y();
                     fTier1RecoBeamParticleStartZ = reco_primary_start_vertex.Z();
+                    
+                    /*std::cout << "Tier 1 track" << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartX: " << fTier1RecoBeamParticleStartX << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartY: " << fTier1RecoBeamParticleStartY << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartZ: " << fTier1RecoBeamParticleStartZ << std::endl;*/
 
                     fTier1RecoStartVertexX_SCE_corrected = fTier1RecoBeamParticleStartX+SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).X();
                     fTier1RecoStartVertexY_SCE_corrected = fTier1RecoBeamParticleStartY-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Y();
                     fTier1RecoStartVertexZ_SCE_corrected = fTier1RecoBeamParticleStartZ-SCE->GetPosOffsets(geo::Point_t(fTier1RecoBeamParticleStartX,fTier1RecoBeamParticleStartY,fTier1RecoBeamParticleStartZ)).Z();
 
-//                    std::cout << "fTier1RecoStartVertexX_SCE_corrected: " << fTier1RecoStartVertexX_SCE_corrected << std::endl;
-//                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
-//                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
-     
+                    /*std::cout << "fTier1RecoStartVertexX_SCE_corrected: " << fTier1RecoStartVertexX_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
+
+                    std::cout << "X SCE offset in start vertex: " << fTier1RecoStartVertexX_SCE_corrected - fTier1RecoBeamParticleStartX << std::endl;
+                    std::cout << "Y SCE offset in start vertex: " << fTier1RecoStartVertexY_SCE_corrected - fTier1RecoBeamParticleStartY << std::endl;
+                    std::cout << "Z SCE offset in start vertex: " << fTier1RecoStartVertexZ_SCE_corrected - fTier1RecoBeamParticleStartZ << std::endl;*/
+
                     const TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel);
 
                     fTier1RecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
@@ -1685,29 +1733,59 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                     float tier1_reco_start_dir_y = fTier1RecoBeamStartDirY;
                     float tier1_reco_start_dir_z = fTier1RecoBeamStartDirZ;
 
+                    /*std::cout << "tier1_reco_start_dir_x: " << tier1_reco_start_dir_x << std::endl;
+                    std::cout << "tier1_reco_start_dir_y: " << tier1_reco_start_dir_y << std::endl;
+                    std::cout << "tier1_reco_start_dir_z: " << tier1_reco_start_dir_z << std::endl;*/
+
 //                    float tier1_reco_length = fTier1RecoLengthByRecob;
 
                     float tier1_reco_start_x = fTier1RecoBeamParticleStartX;
                     float tier1_reco_start_y = fTier1RecoBeamParticleStartY;
                     float tier1_reco_start_z = fTier1RecoBeamParticleStartZ;
 
+                    /*std::cout << "tier1_reco_start_x: " << tier1_reco_start_x << std::endl;
+                    std::cout << "tier1_reco_start_y: " << tier1_reco_start_y << std::endl;
+                    std::cout << "tier1_reco_start_z: " << tier1_reco_start_z << std::endl;*/
+
                     float tier1_reco_end_dir_x = tier1_reco_start_x + (2)*(tier1_reco_start_dir_x);
                     float tier1_reco_end_dir_y = tier1_reco_start_y + (2)*(tier1_reco_start_dir_y);
                     float tier1_reco_end_dir_z = tier1_reco_start_z + (2)*(tier1_reco_start_dir_z);
+
+                    /*std::cout << "tier1_reco_end_dir_x: " << tier1_reco_end_dir_x << std::endl;
+                    std::cout << "tier1_reco_end_dir_y: " << tier1_reco_end_dir_y << std::endl;
+                    std::cout << "tier1_reco_end_dir_z: " << tier1_reco_end_dir_z << std::endl;*/
 
                     float tier1_reco_end_dir_x_SCE_corrected = tier1_reco_end_dir_x+SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).X();
                     float tier1_reco_end_dir_y_SCE_corrected = tier1_reco_end_dir_y-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Y();
                     float tier1_reco_end_dir_z_SCE_corrected = tier1_reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Z();
 
+                    /*std::cout << "tier1_reco_end_dir_x_SCE_corrected: " << tier1_reco_end_dir_x_SCE_corrected << std::endl;
+                    std::cout << "tier1_reco_end_dir_y_SCE_corrected: " << tier1_reco_end_dir_y_SCE_corrected << std::endl;
+                    std::cout << "tier1_reco_end_dir_z_SCE_corrected: " << tier1_reco_end_dir_z_SCE_corrected << std::endl;
+
+                    std::cout << "X SCE offset in reco end dir pos: " << tier1_reco_end_dir_x_SCE_corrected - tier1_reco_end_dir_x << std::endl;
+                    std::cout << "Y SCE offset in reco end dir pos: " << tier1_reco_end_dir_y_SCE_corrected - tier1_reco_end_dir_y << std::endl;
+                    std::cout << "Z SCE offset in reco end dir pos: " << tier1_reco_end_dir_z_SCE_corrected - tier1_reco_end_dir_z << std::endl;*/
+
                     float tier1_startdirX_SCE_corrected = tier1_reco_end_dir_x_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
-                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
-                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexY_SCE_corrected;
+                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexZ_SCE_corrected;
+
+                    /*std::cout << "tier1_startdirX_SCE_corrected: " << tier1_startdirX_SCE_corrected << std::endl;
+                    std::cout << "tier1_startdirY_SCE_corrected: " << tier1_startdirY_SCE_corrected << std::endl;
+                    std::cout << "tier1_startdirZ_SCE_corrected: " << tier1_startdirZ_SCE_corrected << std::endl;*/
 
                     float tier1_reco_mag = sqrt(((tier1_startdirX_SCE_corrected)*(tier1_startdirX_SCE_corrected)) + ((tier1_startdirY_SCE_corrected)*(tier1_startdirY_SCE_corrected)) + ((tier1_startdirZ_SCE_corrected)*(tier1_startdirZ_SCE_corrected)));
+
+                    //std::cout << "tier1_reco_mag: " << tier1_reco_mag << std::endl;
 
                     fTier1RecoStartDirectionX_SCE_corrected = tier1_startdirX_SCE_corrected/tier1_reco_mag;
                     fTier1RecoStartDirectionY_SCE_corrected = tier1_startdirY_SCE_corrected/tier1_reco_mag;
                     fTier1RecoStartDirectionZ_SCE_corrected = tier1_startdirZ_SCE_corrected/tier1_reco_mag;
+
+                    /*std::cout << "fTier1RecoStartDirectionX_SCE_corrected: " << fTier1RecoStartDirectionX_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartDirectionY_SCE_corrected: " << fTier1RecoStartDirectionY_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartDirectionZ_SCE_corrected: " << fTier1RecoStartDirectionZ_SCE_corrected << std::endl;*/
 
 //-----------------------------------------------------------------------------------------            
         /*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
@@ -1758,9 +1836,10 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                 {
                     fTier1RecoID = 0;
                     fTier1Reco_beam_pfp_topology = 0;
+                    ++counter_shower;
                     fTier1RecoLengthByRecob = thisShower->Length();
 //                    auto calo = fProtoDUNEShowerUtils.GetRecoShowerCalorimetry(*thisShower, e, fShowerLabel, fCalorimetryTagSCE);
-                    const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
+                    const TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*recoParticle,e,fPFParticleLabel,fTrackLabel); //to change vertex
 
                     fTier1RecoBeamParticleStartX = reco_primary_start_vertex.X();
                     fTier1RecoBeamParticleStartY = reco_primary_start_vertex.Y();
@@ -1775,9 +1854,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
 //                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
 
-//                    fTier1RecoBeamStartDirX = (thisShower->Direction()).X();
-//                    fTier1RecoBeamStartDirY = (thisShower->Direction()).Y();
-//                    fTier1RecoBeamStartDirZ = (thisShower->Direction()).Z();
+                    fTier1RecoBeamStartDirX = (thisShower->Direction()).X();
+                    fTier1RecoBeamStartDirY = (thisShower->Direction()).Y();
+                    fTier1RecoBeamStartDirZ = (thisShower->Direction()).Z();
 
 //-------------------------------------------------------------------------------------------------------------------
                     float tier1_reco_start_dir_x = fTier1RecoBeamStartDirX;
@@ -1799,14 +1878,57 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                     float tier1_reco_end_dir_z_SCE_corrected = tier1_reco_end_dir_z-SCE->GetPosOffsets(geo::Point_t(tier1_reco_end_dir_x,tier1_reco_end_dir_y,tier1_reco_end_dir_z)).Z();
 
                     float tier1_startdirX_SCE_corrected = tier1_reco_end_dir_x_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
-                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
-                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexX_SCE_corrected;
+                    float tier1_startdirY_SCE_corrected = tier1_reco_end_dir_y_SCE_corrected - fTier1RecoStartVertexY_SCE_corrected;
+                    float tier1_startdirZ_SCE_corrected = tier1_reco_end_dir_z_SCE_corrected - fTier1RecoStartVertexZ_SCE_corrected;
 
                     float tier1_reco_mag = sqrt(((tier1_startdirX_SCE_corrected)*(tier1_startdirX_SCE_corrected)) + ((tier1_startdirY_SCE_corrected)*(tier1_startdirY_SCE_corrected)) + ((tier1_startdirZ_SCE_corrected)*(tier1_startdirZ_SCE_corrected)));
 
                     fTier1RecoStartDirectionX_SCE_corrected = tier1_startdirX_SCE_corrected/tier1_reco_mag;
                     fTier1RecoStartDirectionY_SCE_corrected = tier1_startdirY_SCE_corrected/tier1_reco_mag;
                     fTier1RecoStartDirectionZ_SCE_corrected = tier1_startdirZ_SCE_corrected/tier1_reco_mag;
+
+                    /*std::cout << "Tier 1 shower" << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartX: " << fTier1RecoBeamParticleStartX << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartY: " << fTier1RecoBeamParticleStartY << std::endl;
+                    std::cout << "fTier1RecoBeamParticleStartZ: " << fTier1RecoBeamParticleStartZ << std::endl;
+
+                    std::cout << "fTier1RecoStartVertexX_SCE_corrected: " << fTier1RecoStartVertexX_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartVertexY_SCE_corrected: " << fTier1RecoStartVertexY_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartVertexZ_SCE_corrected: " << fTier1RecoStartVertexZ_SCE_corrected << std::endl;
+
+                    std::cout << "X SCE offset in start vertex: " << fTier1RecoStartVertexX_SCE_corrected - fTier1RecoBeamParticleStartX << std::endl;
+                    std::cout << "Y SCE offset in start vertex: " << fTier1RecoStartVertexY_SCE_corrected - fTier1RecoBeamParticleStartY << std::endl;
+                    std::cout << "Z SCE offset in start vertex: " << fTier1RecoStartVertexZ_SCE_corrected - fTier1RecoBeamParticleStartZ << std::endl;
+
+                    std::cout << "tier1_reco_start_dir_x: " << tier1_reco_start_dir_x << std::endl;
+                    std::cout << "tier1_reco_start_dir_y: " << tier1_reco_start_dir_y << std::endl;
+                    std::cout << "tier1_reco_start_dir_z: " << tier1_reco_start_dir_z << std::endl;
+
+                    std::cout << "tier1_reco_start_x: " << tier1_reco_start_x << std::endl;
+                    std::cout << "tier1_reco_start_y: " << tier1_reco_start_y << std::endl;
+                    std::cout << "tier1_reco_start_z: " << tier1_reco_start_z << std::endl;
+
+                    std::cout << "tier1_reco_end_dir_x: " << tier1_reco_end_dir_x << std::endl;
+                    std::cout << "tier1_reco_end_dir_y: " << tier1_reco_end_dir_y << std::endl;
+                    std::cout << "tier1_reco_end_dir_z: " << tier1_reco_end_dir_z << std::endl;
+
+                    std::cout << "tier1_reco_end_dir_x_SCE_corrected: " << tier1_reco_end_dir_x_SCE_corrected << std::endl;
+                    std::cout << "tier1_reco_end_dir_y_SCE_corrected: " << tier1_reco_end_dir_y_SCE_corrected << std::endl;
+                    std::cout << "tier1_reco_end_dir_z_SCE_corrected: " << tier1_reco_end_dir_z_SCE_corrected << std::endl;
+
+                    std::cout << "X SCE offset in reco end dir pos: " << tier1_reco_end_dir_x_SCE_corrected - tier1_reco_end_dir_x << std::endl;
+                    std::cout << "Y SCE offset in reco end dir pos: " << tier1_reco_end_dir_y_SCE_corrected - tier1_reco_end_dir_y << std::endl;
+                    std::cout << "Z SCE offset in reco end dir pos: " << tier1_reco_end_dir_z_SCE_corrected - tier1_reco_end_dir_z << std::endl;
+
+                    std::cout << "tier1_startdirX_SCE_corrected: " << tier1_startdirX_SCE_corrected << std::endl;
+                    std::cout << "tier1_startdirY_SCE_corrected: " << tier1_startdirY_SCE_corrected << std::endl;
+                    std::cout << "tier1_startdirZ_SCE_corrected: " << tier1_startdirZ_SCE_corrected << std::endl;
+
+                    std::cout << "tier1_reco_mag: " << tier1_reco_mag << std::endl;
+
+                    std::cout << "fTier1RecoStartDirectionX_SCE_corrected: " << fTier1RecoStartDirectionX_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartDirectionY_SCE_corrected: " << fTier1RecoStartDirectionY_SCE_corrected << std::endl;
+                    std::cout << "fTier1RecoStartDirectionZ_SCE_corrected: " << fTier1RecoStartDirectionZ_SCE_corrected << std::endl;*/
 //-----------------------------------------------------------------------------------------            
         /*            std::cout << "recoDirection x: " << fTier0RecoStartDirectionX_SCE_corrected << std::endl;
                     std::cout << "recoDirection y: " << fTier0RecoStartDirectionY_SCE_corrected << std::endl;
@@ -1870,7 +1992,16 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             }
 //            std::cout << "21" << std::endl;
         }
+
+/*        std::cout << "fTier0NoTrackDaughters: " << fTier0NoTrackDaughters << std::endl;
+        std::cout << "fTier0NoShowerDaughters: " << fTier0NoShowerDaughters << std::endl;
+        std::cout << "counter_track:" << counter_track << std::endl;
+        std::cout << "counter_shower: " << counter_shower << std::endl;*/
+
+        fTier0NoTrackDaughtersWithCuts = counter_track;
+        fTier0NoShowerDaughtersWithCuts = counter_shower;
     }
+   fTree->Fill();
 }
 
 void analysis::PDSPKaonAnalysis::beginJob()
@@ -1922,7 +2053,8 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("trueBeamParticleStartZ",&fTrueBeamParticleStartZ,"trueBeamParticleStartZ/F");
     fTree->Branch("fTier0NoTrackDaughters",&fTier0NoTrackDaughters,"fTier0NoTrackDaughters/I");
     fTree->Branch("fTier0NoShowerDaughters",&fTier0NoShowerDaughters,"fTier0NoShowerDaughters/I");
-        
+    fTree->Branch("fTier0NoTrackDaughtersWithCuts",&fTier0NoTrackDaughtersWithCuts,"fTier0NoTrackDaughtersWithCuts/I");
+    fTree->Branch("fTier0NoShowerDaughtersWithCuts",&fTier0NoShowerDaughtersWithCuts,"fTier0NoShowerDaughtersWithCuts/I");
 
 //    fTree->Branch("trueBeamParticleEndX",&fTrueBeamParticleEndX,"trueBeamParticleEndX/F");
 //    fTree->Branch("trueBeamParticleEndY",&fTrueBeamParticleEndY,"trueBeamParticleEndY/F");
