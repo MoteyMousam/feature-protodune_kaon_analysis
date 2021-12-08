@@ -147,12 +147,19 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
   float fTier0MCLength;
   float fTier0SCERecoLength;
 
+  int fTier0NoTrueTrackDaughters;
+  int fTier0NoTrueShowerDaughters;
+  int fTier0NoTrueAllDaughters;
+
+  int fTier0NoAllDaughters;
   int fTier0NoTrackDaughters;
   int fTier0NoShowerDaughters;
 
+  int fTier0NoAllDaughtersWithCuts;
   int fTier0NoTrackDaughtersWithCuts;
   int fTier0NoShowerDaughtersWithCuts;
 
+  float fTier0MCRecoStartDirectionDotProduct;
   float fRecoBeamParticleStartX;
   float fRecoBeamParticleStartY;
   float fRecoBeamParticleStartZ;
@@ -351,7 +358,7 @@ int count_unwanted_particles(std::vector<const simb::MCParticle*> inputVector);
 
   int fTier0RecoID;
   int fTier1RecoID;
-
+  float fTier1MCRecoStartDirectionDotProduct;
 //-------------------------------------------------------------------
 //  protoana::ProtoDUNEBeamlineUtils fBeamlineUtils;
 };
@@ -479,11 +486,19 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     fTier0MCStartDirectionY                     = -9999;
     fTier0MCStartDirectionZ                     = -9999;
 
+    fTier0NoTrueTrackDaughters                  = -1;
+    fTier0NoTrueShowerDaughters                 = -1;
+    fTier0NoTrueAllDaughters                    = 0;
+
+    fTier0NoAllDaughters                        = 0;
     fTier0NoTrackDaughters                      = -1;
     fTier0NoShowerDaughters                     = -1;
-    
+
+    fTier0NoAllDaughtersWithCuts                = 0;
     fTier0NoTrackDaughtersWithCuts              = -1;
     fTier0NoShowerDaughtersWithCuts             = -1;
+
+    fTier0MCRecoStartDirectionDotProduct        = -9999;
 //------------------------------Tier 1--------------------------------------
     fTier1TrueBeamParticleEnergy                     = -9999.;
     fTier1TrueBeamParticlePDGCode                    = -9999;
@@ -547,7 +562,6 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     fTier1RecoLengthByRecob                                 = -9999;
     fTier1PrimaryBeamParticleLength                  = -9999;
     fTier1Beam_length_by_traj_points                 = -9999;
-
     fTier1Reco_beam_pfp_topology                     = -9999;
 
     fTier1MCParticleHitsSize                        = -9999;
@@ -587,6 +601,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     fTier1MCLength                                  = -9999;
     fTier0MCLength                                  = -9999;
     fTrueBeamLengthVersion3                         = -9999;
+    fTier1MCRecoStartDirectionDotProduct            = -9999;
 //    fTier1McRecoMatch                               = -9999;
 //------------------------------------------------------------------
 
@@ -662,7 +677,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
     else
     {
         //fDoesMCRecoMatch = 0;
-        std::cout << "no reconstructed reconstructed beam particle!" << std::endl;
+        std::cout << "no reconstructed beam particle!" << std::endl;
     }
 
 //    std::cout << "2" << std::endl;
@@ -730,6 +745,11 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
         fTier0NoTrackDaughters      = trackDaughters.size();
         fTier0NoShowerDaughters     = showerDaughters.size();
+        fTier0NoAllDaughters        = fTier0NoTrackDaughters + fTier0NoShowerDaughters;
+
+/*        std::cout << "fTier0NoAllDaughters: " << fTier0NoAllDaughters << std::endl;
+        std::cout << "fTier0NoTrackDaughters: " << fTier0NoTrackDaughters << std::endl;
+        std::cout << "fTier0NoShowerDaughters: " << fTier0NoShowerDaughters << std::endl;*/
 
 //        std::cout << "tier0 PDG: " << fTier0MCPDGCode << std::endl;
 //        std::cout << "tier0 true (TOTAL)length: " << fTrueBeamLengthVersion3 << std::endl;
@@ -764,7 +784,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         std::vector < TVector3 > trueParticleTraj;
         std::vector < TVector3 > trueProjectedTrajPoints;
         TVector3 trueStartPosition = {fTier0MCStartVertexX, fTier0MCStartVertexY, fTier0MCStartVertexZ};
-        TVector3 trueStartDirection = {fTier0MCStartDirectionX,fTier0MCStartDirectionY, fTier0MCStartDirectionZ};
+        TVector3 trueStartDirection = {fTier0MCStartDirectionX,fTier0MCStartDirectionY, fTier0MCStartDirectionZ}; //MC START DIRECTION
 
         if((fTier0MCPDGCode == abs(11)) || (fTier0MCPDGCode == 22))
         {
@@ -959,7 +979,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
             TVector3 reco_primary_start_vertex = fProtoDUNEPFParticleUtils.GetPFParticleVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 
-            fRecoBeamParticleStartX = reco_primary_start_vertex.X();
+            fRecoBeamParticleStartX = reco_primary_start_vertex.X(); // GET THIS
             fRecoBeamParticleStartY = reco_primary_start_vertex.Y();
             fRecoBeamParticleStartZ = reco_primary_start_vertex.Z();
 
@@ -976,7 +996,7 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 
             TVector3 reco_primary_interaction_vertex = fProtoDUNEPFParticleUtils.GetPFParticleSecondaryVertex(*beamParticles[0],e,fPFParticleLabel,fTrackLabel);
 
-            fRecoBeamParticleInteractionX = reco_primary_interaction_vertex.X();
+            fRecoBeamParticleInteractionX = reco_primary_interaction_vertex.X(); //GET THIS
             fRecoBeamParticleInteractionY = reco_primary_interaction_vertex.Y();
             fRecoBeamParticleInteractionZ = reco_primary_interaction_vertex.Z();
 
@@ -1056,8 +1076,10 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             std::cout << "recoDirection z: " << fTier0RecoStartDirectionZ_SCE_corrected << std::endl;*/
 
             std::vector < TVector3 > projectedSpacePoints;
-            TVector3 recoDirection = {fTier0RecoStartDirectionX_SCE_corrected, fTier0RecoStartDirectionY_SCE_corrected, fTier0RecoStartDirectionZ_SCE_corrected}; 
+            TVector3 recoDirection = {fTier0RecoStartDirectionX_SCE_corrected, fTier0RecoStartDirectionY_SCE_corrected, fTier0RecoStartDirectionZ_SCE_corrected}; // RECO START DIRECTION
 
+            fTier0MCRecoStartDirectionDotProduct = recoDirection*trueStartDirection;
+//            std::cout << "fTier0MCRecoStartDirectionDotProduct: " << fTier0MCRecoStartDirectionDotProduct << std::endl;
 //            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
 
 //A + dot(AP, AB) *AB
@@ -1173,6 +1195,9 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
 //A + dot(AP, AB) *AB
             TVector3 startPosition = {fTier0RecoStartVertexX_SCE_corrected,fTier0RecoStartVertexY_SCE_corrected,fTier0RecoStartVertexZ_SCE_corrected};
 
+            fTier0MCRecoStartDirectionDotProduct = recoDirection*trueStartDirection;
+//            std::cout << "fTier0MCRecoStartDirectionDotProduct: " << fTier0MCRecoStartDirectionDotProduct << std::endl;
+
 /*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
             std::cout << "startPosition y: " << startPosition.Y() << std::endl;
             std::cout << "startPosition z: " << startPosition.Z() << std::endl;
@@ -1287,6 +1312,31 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
             }
         }
 
+        int counter_true_track = 0;
+        int counter_true_shower = 0;
+        int true_daug = tier1TrueParticlesQ1.size();
+        for (int i = 0; i < true_daug; i++)
+        {
+            auto trueParticle = tier1TrueParticlesQ1[i];
+            std::vector<const recob::Hit*> trueHits = fProtoDUNETruthUtils.GetMCParticleHits(clockData, *tier1TrueParticlesQ1[i], e, fHitTag);
+            int pdgcode = trueParticle->PdgCode();
+
+            if (trueHits.size() > 14)
+            {
+                if (abs(pdgcode) == 11 || pdgcode == 22)
+                    ++counter_true_shower;
+
+                else
+                    ++counter_true_track;
+            }                    
+        }
+
+        fTier0NoTrueTrackDaughters = counter_true_track;
+        fTier0NoTrueShowerDaughters = counter_true_shower;
+        fTier0NoTrueAllDaughters = fTier0NoTrueTrackDaughters + fTier0NoTrueShowerDaughters;
+//        std::cout << "fTier0NoTrueAllDaughters: " << fTier0NoTrueAllDaughters << std::endl;
+//        std::cout << "fTier0NoTrueTrackDaughters: " << fTier0NoTrueTrackDaughters << std::endl;
+//        std::cout << "fTier0NoTrueShowerDaughters: " << fTier0NoTrueShowerDaughters << std::endl;
 //        std::cout << "tier1TrueParticlesQ1.size(): " << tier1TrueParticlesQ1.size() << std::endl;
 //        int new_size = tier1TrueParticlesQ1.size();
 /*        for (int i = 0; i < new_size; i++)
@@ -1795,6 +1845,8 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
                     std::vector < TVector3 > projectedSpacePoints;
                     TVector3 recoDirection = {fTier1RecoStartDirectionX_SCE_corrected, fTier1RecoStartDirectionY_SCE_corrected, fTier1RecoStartDirectionZ_SCE_corrected}; 
 
+                    fTier1MCRecoStartDirectionDotProduct = recoDirection*trueStartDirection;
+//                    std::cout << "fTier1MCRecoStartDirectionDotProduct: " << fTier1MCRecoStartDirectionDotProduct << std::endl;
         //            std::cout << "recoDirection mag: " << recoDirection.Mag() << std::endl;
 
         //A + dot(AP, AB) *AB
@@ -1942,6 +1994,8 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         //A + dot(AP, AB) *AB
                     TVector3 startPosition = {fTier1RecoStartVertexX_SCE_corrected,fTier1RecoStartVertexY_SCE_corrected,fTier1RecoStartVertexZ_SCE_corrected};
 
+                    fTier1MCRecoStartDirectionDotProduct = recoDirection*trueStartDirection;
+//                    std::cout << "fTier1MCRecoStartDirectionDotProduct: " << fTier1MCRecoStartDirectionDotProduct << std::endl;
         /*            std::cout << "startPosition x: " << startPosition.X() << std::endl;
                     std::cout << "startPosition y: " << startPosition.Y() << std::endl;
                     std::cout << "startPosition z: " << startPosition.Z() << std::endl;
@@ -1997,9 +2051,13 @@ void analysis::PDSPKaonAnalysis::analyze(art::Event const& e)
         std::cout << "fTier0NoShowerDaughters: " << fTier0NoShowerDaughters << std::endl;
         std::cout << "counter_track:" << counter_track << std::endl;
         std::cout << "counter_shower: " << counter_shower << std::endl;*/
-
+        fTier0NoAllDaughtersWithCuts = counter_track + counter_shower;
         fTier0NoTrackDaughtersWithCuts = counter_track;
         fTier0NoShowerDaughtersWithCuts = counter_shower;
+
+//        std::cout << "fTier0NoAllDaughtersWithCuts: " << fTier0NoAllDaughtersWithCuts << std::endl;
+//        std::cout << "fTier0NoTrackDaughtersWithCuts: " << fTier0NoTrackDaughtersWithCuts << std::endl;
+//        std::cout << "fTier0NoShowerDaughtersWithCuts: " << fTier0NoShowerDaughtersWithCuts << std::endl;
     }
    fTree->Fill();
 }
@@ -2051,11 +2109,17 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTree->Branch("trueBeamParticleStartX",&fTrueBeamParticleStartX,"trueBeamParticleStartX/F");
     fTree->Branch("trueBeamParticleStartY",&fTrueBeamParticleStartY,"trueBeamParticleStartY/F");
     fTree->Branch("trueBeamParticleStartZ",&fTrueBeamParticleStartZ,"trueBeamParticleStartZ/F");
+
+    fTree->Branch("fTier0NoTrueAllDaughters",&fTier0NoTrueAllDaughters,"fTier0NoTrueAllDaughters/I");
+    fTree->Branch("fTier0NoTrueTrackDaughters",&fTier0NoTrueTrackDaughters,"fTier0NoTrueTrackDaughters/I");
+    fTree->Branch("fTier0NoTrueShowerDaughters",&fTier0NoTrueShowerDaughters,"fTier0NoTrueShowerDaughters/I");
+    fTree->Branch("fTier0NoAllDaughters",&fTier0NoAllDaughters,"fTier0NoAllDaughters/I");
     fTree->Branch("fTier0NoTrackDaughters",&fTier0NoTrackDaughters,"fTier0NoTrackDaughters/I");
     fTree->Branch("fTier0NoShowerDaughters",&fTier0NoShowerDaughters,"fTier0NoShowerDaughters/I");
+    fTree->Branch("fTier0NoAllDaughtersWithCuts",&fTier0NoAllDaughtersWithCuts,"fTier0NoAllDaughtersWithCuts/I");
     fTree->Branch("fTier0NoTrackDaughtersWithCuts",&fTier0NoTrackDaughtersWithCuts,"fTier0NoTrackDaughtersWithCuts/I");
     fTree->Branch("fTier0NoShowerDaughtersWithCuts",&fTier0NoShowerDaughtersWithCuts,"fTier0NoShowerDaughtersWithCuts/I");
-
+    fTree->Branch("fTier0MCRecoStartDirectionDotProduct",&fTier0MCRecoStartDirectionDotProduct,"fTier0MCRecoStartDirectionDotProduct/F");
 //    fTree->Branch("trueBeamParticleEndX",&fTrueBeamParticleEndX,"trueBeamParticleEndX/F");
 //    fTree->Branch("trueBeamParticleEndY",&fTrueBeamParticleEndY,"trueBeamParticleEndY/F");
 //    fTree->Branch("trueBeamParticleEndZ",&fTrueBeamParticleEndZ,"trueBeamParticleEndZ/F");
@@ -2088,17 +2152,17 @@ void analysis::PDSPKaonAnalysis::beginJob()
 
 
 
- //   fTree->Branch("recoBeamParticleStartX",&fRecoBeamParticleStartX,"recoBeamParticleStartX/F");//
-//    fTree->Branch("recoBeamParticleStartY",&fRecoBeamParticleStartY,"recoBeamParticleStartY/F");//
-//fTree->Branch("recoBeamParticleStartZ",&fRecoBeamParticleStartZ,"recoBeamParticleStartZ/F");//
+    fTree->Branch("fRecoBeamParticleStartX",&fRecoBeamParticleStartX,"fRecoBeamParticleStartX/F");//
+    fTree->Branch("fRecoBeamParticleStartY",&fRecoBeamParticleStartY,"fRecoBeamParticleStartY/F");//
+    fTree->Branch("fRecoBeamParticleStartZ",&fRecoBeamParticleStartZ,"fRecoBeamParticleStartZ/F");//
 
 //    fTree->Branch("beamInst_startVertex_X_SCE_corrected",&fBeamInst_startVertex_X_SCE_corrected,"beamInst_startVertex_X_SCE_corrected/F");//
 //    fTree->Branch("beamInst_startVertex_Y_SCE_corrected",&fBeamInst_startVertex_Y_SCE_corrected,"beamInst_startVertex_Y_SCE_corrected/F");//
 //    fTree->Branch("beamInst_startVertex_Z_SCE_corrected",&fBeamInst_startVertex_Z_SCE_corrected,"beamInst_startVertex_Z_SCE_corrected/F");//
 //
-//    fTree->Branch("recoBeamParticleInteractionX",&fRecoBeamParticleInteractionX,"recoBeamParticleInteractionX/F");//
-//    fTree->Branch("recoBeamParticleInteractionY",&fRecoBeamParticleInteractionY,"recoBeamParticleInteractionY/F");//
-//    fTree->Branch("recoBeamParticleInteractionZ",&fRecoBeamParticleInteractionZ,"recoBeamParticleInteractionZ/F");//
+    fTree->Branch("recoBeamParticleInteractionX",&fRecoBeamParticleInteractionX,"recoBeamParticleInteractionX/F");//
+    fTree->Branch("recoBeamParticleInteractionY",&fRecoBeamParticleInteractionY,"recoBeamParticleInteractionY/F");//
+    fTree->Branch("recoBeamParticleInteractionZ",&fRecoBeamParticleInteractionZ,"recoBeamParticleInteractionZ/F");//
 
 
 //
@@ -2142,16 +2206,17 @@ void analysis::PDSPKaonAnalysis::beginJob()
     fTestTree->Branch("fTier1RecoID",&fTier1RecoID,"fTier1RecoID/I");
     fTestTree->Branch("fTier1MCLength",&fTier1MCLength,"fTier1MCLength/F");
     fTestTree->Branch("fTier1SCERecoLength",&fTier1SCERecoLength,"fTier1SCERecoLength/F");
-    fTestTree->Branch("fTier1TrueBeamParticleLength",&fTier1TrueBeamParticleLength,"fTier1TrueBeamParticleLength/F");//
+    fTestTree->Branch("fTier1TrueBeamParticleLength",&fTier1TrueBeamParticleLength,"fTier1TrueBeamParticleLength/F");//fTier0MCRecoStartDirectionDotProduct
+    fTestTree->Branch("fTier1MCRecoStartDirectionDotProduct",&fTier1MCRecoStartDirectionDotProduct,"fTier1MCRecoStartDirectionDotProduct/F");//
 //    fTestTree->Branch("fTier1McRecoMatch",&fTier1McRecoMatch,"fTier1McRecoMatch/I");//
 
 //    fTestTree->Branch("tier1beamInst_startVertex_X_SCE_corrected",&fTier1BeamInst_startVertex_X_SCE_corrected,"tier1beamInst_startVertex_X_SCE_corrected/F");//
 //    fTestTree->Branch("tier1beamInst_startVertex_Y_SCE_corrected",&fTier1BeamInst_startVertex_Y_SCE_corrected,"tier1beamInst_startVertex_Y_SCE_corrected/F");//
 //    fTestTree->Branch("tier1beamInst_startVertex_Z_SCE_corrected",&fTier1BeamInst_startVertex_Z_SCE_corrected,"tier1beamInst_startVertex_Z_SCE_corrected/F");//
 //    fTestTree->Branch("tier1beam_length_by_traj_points",&fTier1Beam_length_by_traj_points,"tier1beam_length_by_traj_points/F");//
-//    fTestTree->Branch("tier1recoBeamParticleStartX",&fTier1RecoBeamParticleStartX,"tier1recoBeamParticleStartX/F");//
-//    fTestTree->Branch("tier1recoBeamParticleStartY",&fTier1RecoBeamParticleStartY,"tier1recoBeamParticleStartY/F");//
-//    fTestTree->Branch("tier1recoBeamParticleStartZ",&fTier1RecoBeamParticleStartZ,"tier1recoBeamParticleStartZ/F");//
+    fTestTree->Branch("fTier1RecoBeamParticleStartX",&fTier1RecoBeamParticleStartX,"fTier1RecoBeamParticleStartX/F");//
+    fTestTree->Branch("fTier1RecoBeamParticleStartY",&fTier1RecoBeamParticleStartY,"fTier1RecoBeamParticleStartY/F");//
+    fTestTree->Branch("fTier1RecoBeamParticleStartZ",&fTier1RecoBeamParticleStartZ,"fTier1RecoBeamParticleStartZ/F");//
 //    fTestTree->Branch("tier1recoBeamParticleInteractionX",&fTier1RecoBeamParticleInteractionX,"tier1recoBeamParticleInteractionX/F");//
 //    fTestTree->Branch("tier1recoBeamParticleInteractionY",&fTier1RecoBeamParticleInteractionY,"tier1recoBeamParticleInteractionY/F");//
 //    fTestTree->Branch("tier1recoBeamParticleInteractionZ",&fTier1RecoBeamParticleInteractionZ,"tier1recoBeamParticleInteractionZ/F");//
